@@ -10,7 +10,7 @@ public class Main {
 	public static void main(String[] args) throws IOException {
 		// TODO Auto-generated method stub
 		System.setProperty("java.net.preferIPv4Stack" , "true");
-		String msg = "Hello";
+		String msg = "Hello do Daniel";
 		InetAddress group = InetAddress.getByName("228.0.0.4");
 		@SuppressWarnings("resource")
 		MulticastSocket s = new MulticastSocket(6789);
