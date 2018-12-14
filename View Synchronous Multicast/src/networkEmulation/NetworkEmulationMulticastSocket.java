@@ -31,6 +31,10 @@ public class NetworkEmulationMulticastSocket extends MulticastSocket {
 			}
 		}
 	}
+	
+	public void send(DatagramPacket p) throws IOException {
+		super.send(p);
+	}
 
 	private boolean lost() {
 		// TODO: return true with droprate probability
