@@ -2,15 +2,11 @@ package node;
 
 public class VSM {
 	
-	public void send() {
+	public void sendVSC() {
 		
 	}
 	
-	public String recv() {
+	public String recvVSC() {
 		return null;
-	}
-
-	public void changeView() {
-		
 	}
 }
