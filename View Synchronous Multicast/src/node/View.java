@@ -29,4 +29,8 @@ public class View {
 	public void setNodes(ArrayList<Integer> nodes) {
 		this.nodes = nodes;
 	}
+	
+	
+	// Adicionar equals
+	
 }

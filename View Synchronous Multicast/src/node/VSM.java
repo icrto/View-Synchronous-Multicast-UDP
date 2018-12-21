@@ -1,11 +1,23 @@
 package node;
 
+import java.util.ArrayList;
+
 public class VSM {
+
+	private ArrayList<VSMMessage> msgBuffer;
+	
+	private boolean changingView = false;
+	
+	private View currentView;
+	
+	private Group group;
 	
 	public void sendVSC() {
+		updateView();
+		while(changingView);
+		
 		
 		/* TODO: 
-		 * 1º - Espera até terminar mudança de vista caso esteja a meio da mesma
 		 * 2º - Enviar mensagem em multicast udp
 		 * 3º - Correr recv para esta mensagem devido à propriedade de self-delivery
 		*/
@@ -15,11 +27,18 @@ public class VSM {
 	public String recvVSC() {
 		
 		/* TODO:
-		 * 1º - Chamar receive da Network Emulation - é bloqueante até receber alguma coisa
-		 * 2º - Enviar ack relativo a esta mensagem em multicast UDP
-		 * 3º - Esperar
+		 * 1 - retornar msg presente em buffer de stable msgs ou esperar até ter alguma coisa
 		*/
 		
 		return null;
+	}
+	
+	private void updateView() {
+		View retrievedView = group.retrieveCurrentView();
+		if(currentView.equals(retrievedView)) return;
+		else {
+			changingView = false;
+			// BIG TODO: Mudar vista !!!!!!!!!!!!
+		}
 	}
 }
