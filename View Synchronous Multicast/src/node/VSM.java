@@ -49,19 +49,24 @@ public class VSM extends Thread {
 		s.joinGroup(UDPgroup);
 
 		stableMessages = new ArrayList<PayloadMessage>();
-		group = new Group(nodeId);
-		currentView = group.retrieveCurrentView(); // this should block until the view is received by the controller
+		//group = new Group(nodeId);
+		//currentView = group.retrieveCurrentView(); // this should block until the view is received by the controller
 
 		// TODO: check if sanity check below makes sense
 		/*if(currentView.getID() != 1) {
 			System.out.println("ERROR: first retrieved view is not view 1");
 			System.exit(1);
 		}*/
+		
 
+		
+		System.out.println(nodeId);
 
 		//Testing
 		currentView = new View();
 		currentView.join(1);
+		currentView.join(2);
+		currentView.join(3);
 	}
 	
 	/* **************************************
@@ -75,10 +80,10 @@ public class VSM extends Thread {
 		System.out.println("Receiver thread starting...");
 		// Receiver thread code goes here
 
-		byte[] buffer = new byte[1000]; // Need to be careful with this value 
+		byte[] buffer = new byte[2000]; // Need to be careful with this value 
 		DatagramPacket recv;
 		Message msg = null;
-
+		
 		while(true) {
 			updateView();
 			recv = new DatagramPacket(buffer, buffer.length);
@@ -145,7 +150,6 @@ public class VSM extends Thread {
 
 		// Send ack
 		AckMessage ackMessage = new AckMessage(currentView.getID(), Message.ACK_MESSAGE, nodeId, msg.getSenderId(), msg.getSeqN());
-		seqNumber++;
 		byte[] bytes = messageToBytes(ackMessage);
 
 		DatagramPacket packet = new DatagramPacket(bytes, bytes.length, UDPgroup, UDPport);
@@ -163,6 +167,11 @@ public class VSM extends Thread {
 			if(DEBUG_PRINT) System.out.println("DEBUG: Received message that wasn't sent from a view member, discarded..");
 			return;
 		}
+		/* TODO: more checks needed
+		 * 		- what if the view id is > than current view?
+		 * 		- how to check for duplicates? 
+		 * 		- etc
+		 */
 
 		for(int i = 0; i < ackMaps.size(); i++) {
 			AckMap ackMap = ackMaps.get(i);

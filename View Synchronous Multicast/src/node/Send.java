@@ -1,22 +1,18 @@
 package node;
 
 import java.io.IOException;
-import java.net.DatagramPacket;
-import java.net.InetAddress;
-import java.net.MulticastSocket;
 import java.util.Scanner;
 
 public class Send implements Runnable{
 
 	Thread sender;
-	MulticastSocket s;
-	InetAddress group;
+	VSM vsm;
 	Scanner scanner;
 	
-	Send(InetAddress group,MulticastSocket s ){
+	Send(VSM vsm){
 		sender = new Thread(this, "my runnable thread");
-		this.group = group;
-		this.s = s;
+		this.vsm = vsm;
+		
 	    scanner = new Scanner(System.in);
 	    
 	    sender.start();
@@ -28,9 +24,8 @@ public class Send implements Runnable{
 		try {
 			while(true) {  // Para ficar aqui preso sempre pronto a enviar 
 				String read = scanner.next();
-				DatagramPacket hi = new DatagramPacket(read.getBytes(), read.length(), group, 6789);
 			//	System.out.println("Sending " + new String(hi.getData(), hi.getOffset(), hi.getLength()));
-				s.send(hi);
+				vsm.sendVSM(read);
 			}
 		} catch (IOException e) {
     	 		System.out.println("my thread interrupted");

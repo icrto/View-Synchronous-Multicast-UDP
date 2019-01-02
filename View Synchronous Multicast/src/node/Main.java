@@ -17,11 +17,9 @@ public class Main {
 			System.exit(-1);
 		}
 
-		Node node = new Node(args[0], args[1], args[2]);
 
-
-		Receive rcv = new Receive(node.getS());
-		Send snd = new Send(node.getGroup(), node.getS());
+		Receive rcv = new Receive(vsm);
+		Send snd = new Send(vsm);
 		 
 		 try
 		 {
