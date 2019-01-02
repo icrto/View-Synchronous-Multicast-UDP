@@ -1,23 +1,26 @@
 package node;
 
 import java.io.IOException;
-import java.net.InetAddress;
-import java.net.MulticastSocket;
+
+import networkEmulation.NetworkEmulationMulticastSocket;
 
 public class Main {
-	
-	
 
 	public static void main(String[] args) throws IOException {
-		
+		// ARGS: 0->id  1->ip_group  2->socket  3->dropRate 4->avgDelay  5->stdDelay
+	
 		System.setProperty("java.net.preferIPv4Stack" , "true");
 		
-		 InetAddress group = InetAddress.getByName("228.0.0.4");  //228.5.6.7
-		 MulticastSocket s = new MulticastSocket(6789);
-		 s.joinGroup(group);
+		if(args.length != 6) {
+			System.out.println("Number of Args diff of 6!");
+			System.exit(-1);
+		}
 		
-		 Receive rcv = new Receive(s);
-		 Send snd = new Send(group, s);
+		Node node = new Node(args[0], args[1], args[2]);
+		NetworkEmulationMulticastSocket emul = new NetworkEmulationMulticastSocket(args[2], args[3], args[4], args[5]);
+
+		Receive rcv = new Receive(node.getS());
+		Send snd = new Send(node.getGroup(), node.getS());
 		 
 		 try
 		 {
@@ -46,11 +49,7 @@ public class Main {
 			 System.out.println("Sender interrupted");
 		 }
 		 System.out.println("Sender run is over" );
-		 
-		 
-	       
-	       
-		
+
 		
 	}
 

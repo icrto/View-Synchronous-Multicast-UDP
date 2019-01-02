@@ -21,10 +21,10 @@ public class Receive implements Runnable{
 		try
 		{
 			 byte[] buf = new byte[1000];
-			 while(true) {
+			 while(true) {  // Para ficar aqui preso sempre a receber -> FALTA CRIAR UM STOP
 				 DatagramPacket recv = new DatagramPacket(buf, buf.length);
 				 s.receive(recv);
-				 System.out.println("Recebi: " + new String(recv.getData(), recv.getOffset(), recv.getLength()));	
+				 System.out.println("Receive: " + new String(recv.getData(), recv.getOffset(), recv.getLength()));	
 			 }
 
 	     }

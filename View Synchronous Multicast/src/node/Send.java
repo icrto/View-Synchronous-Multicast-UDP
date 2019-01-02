@@ -28,7 +28,7 @@ public class Send implements Runnable{
 	public void run() {
 		
 		try {
-			while(true) {
+			while(true) {  // Para ficar aqui preso sempre pronto a enviar -> FALTA CRIAR UM STOP
 				String read = scanner.next();
 				DatagramPacket hi = new DatagramPacket(read.getBytes(), read.length(), group, 6789);
 			//	System.out.println("Sending " + new String(hi.getData(), hi.getOffset(), hi.getLength()));

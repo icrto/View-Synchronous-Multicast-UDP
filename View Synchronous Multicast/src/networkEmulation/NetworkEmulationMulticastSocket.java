@@ -3,6 +3,8 @@ package networkEmulation;
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.MulticastSocket;
+import java.util.Random;
+
 
 public class NetworkEmulationMulticastSocket extends MulticastSocket {
 	
@@ -10,11 +12,11 @@ public class NetworkEmulationMulticastSocket extends MulticastSocket {
 	double avgDelay = 0;
 	double stdDelay = 0;
 
-	public NetworkEmulationMulticastSocket(int port, double dropRate, double avgDelay, double stdDelay) throws IOException {
-		super(port);
-		this.dropRate = dropRate;
-		this.avgDelay = avgDelay;
-		this.stdDelay = stdDelay;
+	public NetworkEmulationMulticastSocket(String port, String dropRate, String avgDelay, String stdDelay) throws IOException {
+		super(Integer.parseInt(port));
+		this.dropRate = Double.parseDouble(dropRate);
+		this.avgDelay = Double.parseDouble(avgDelay);
+		this.stdDelay = Double.parseDouble(stdDelay);
 	}
 	
 	public void receive(DatagramPacket p) throws IOException {
@@ -37,14 +39,27 @@ public class NetworkEmulationMulticastSocket extends MulticastSocket {
 	}
 
 	private boolean lost() {
-		// TODO: return true with droprate probability
-		return false;
+		//return true with droprate probability
+		double rand_lost = Math.random() * this.dropRate;  //Criar um valor aleatorio entre [0;this.dropRate]
+		
+		if(rand_lost < this.dropRate) {
+			return true;
+		}else {
+			return false;
+		}
+		
 	}
 	
 	private int delayMillis() {
-		// TODO: return delay using normal distribution
-		return 0;
+		// return delay using normal distribution
+		Random std = new Random();
+		
+		double rand_std = std.nextGaussian()*this.stdDelay+this.avgDelay; 
+		int millisDelay = (int) Math.round(rand_std);
+		return millisDelay;
 	}
+	
+	
 	
 
 }
