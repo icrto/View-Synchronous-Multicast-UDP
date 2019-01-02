@@ -25,13 +25,18 @@ public class View implements Serializable{
 		this.nodes = nodes;
 	}
 	public boolean join(int node) {
-		return this.nodes.add(node);
+		if(this.nodes.add(node)) {
+			id++;
+			return true;
+		}
+		return false;
 	}
 	public boolean leave(int node) {
-		return this.nodes.remove(node);
-	}
-	public void changeViewID() {
-		id++;
+		if(this.nodes.remove(node)) {
+			id++;
+			return true;
+		}
+		return false;
 	}
 	@Override
 	public String toString() {
