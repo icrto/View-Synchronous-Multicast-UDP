@@ -5,7 +5,7 @@ import java.net.DatagramPacket;
 import java.net.InetAddress;
 import java.net.MulticastSocket;
 
-public class Main {
+public class Publisher {
 
 	public static void main(String[] args) throws IOException {
 		// TODO Auto-generated method stub

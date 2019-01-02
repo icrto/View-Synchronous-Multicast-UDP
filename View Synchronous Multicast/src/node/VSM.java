@@ -12,6 +12,7 @@ import java.net.InetAddress;
 import java.util.ArrayList;
 
 import networkEmulation.NetworkEmulationMulticastSocket;
+import view.View;
 
 public class VSM {
 
@@ -39,7 +40,7 @@ public class VSM {
 		currentView = group.retrieveCurrentView(); // this should block until the view is received by the controller
 
 		// TODO: check if sanity check below makes sense
-		if(currentView.getId() != 1) {
+		if(currentView.getID() != 1) {
 			System.out.println("ERROR: first retrieved view is not view 1");
 			// TODO: abort (throw exception?)
 		}
@@ -52,7 +53,7 @@ public class VSM {
 		updateView();
 		while(changingView);
 
-		VSMMessage message = new VSMMessage(currentView.getId(), nodeId, seqNumber, payload);
+		VSMMessage message = new VSMMessage(currentView.getID(), nodeId, seqNumber, payload);
 		seqNumber++;
 		byte[] bytes = messageToBytes(message);
 
