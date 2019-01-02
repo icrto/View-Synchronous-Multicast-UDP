@@ -2,86 +2,126 @@ package controller;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
-import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Scanner;
 
 import view.View;
 
 public class Controller {
-	private static View currentView;
-	private static Integer nrNodes;
-	private static int basePort = 60000;
-	private static Socket item;
-	private static ArrayList<Socket> sockets = new ArrayList<Socket>();
-	private static ArrayList<ObjectOutputStream> outputStreams = new ArrayList<ObjectOutputStream>();
-	
-	public static void main(String[] args){
-		if(args.length < 1) {
-			System.out.println("Usage:");
-			System.out.println("java -jar controller.jar <number of nodes>");
-			System.exit(-1);
-		}
-        nrNodes = Integer.parseInt(args[0]);
+	private View currentView;
+	private int nrNodes;
+	private int basePort = 60000;
+	private ArrayList<Socket> sockets = new ArrayList<Socket>();
+	private ArrayList<ObjectOutputStream> outputStreams = new ArrayList<ObjectOutputStream>();
 
-        //create sockets
+	public Controller(int nodes){
+
+		this.nrNodes = nodes;
+
+		//create sockets
 		for(int i = 0; i < nrNodes; i++) {
 			try {
-				item = new Socket("localhost", basePort + i);
+				Socket item = new Socket("localhost", basePort + i);
 				sockets.add(item);
 				outputStreams.add(new ObjectOutputStream(item.getOutputStream()));
 			} catch (IOException e) {
 				System.err.println("Could Not Listen on Port: " + (basePort + i));
 				System.exit(-1);
 			}
-			
+
 		}
-		
-		currentView = new View();
+
+		this.currentView = new View();
+
+	}
+
+	public View getCurrentView() {
+		return currentView;
+	}
+
+	public void setCurrentView(View currentView) {
+		this.currentView = currentView;
+	}
+
+	public int getNrNodes() {
+		return nrNodes;
+	}
+
+	public void setNrNodes(int nrNodes) {
+		this.nrNodes = nrNodes;
+	}
+
+	public int getBasePort() {
+		return basePort;
+	}
+
+	public void setBasePort(int basePort) {
+		this.basePort = basePort;
+	}
+
+	public ArrayList<Socket> getSockets() {
+		return sockets;
+	}
+
+	public void setSockets(ArrayList<Socket> sockets) {
+		this.sockets = sockets;
+	}
+
+	public ArrayList<ObjectOutputStream> getOutputStreams() {
+		return outputStreams;
+	}
+
+	public void setOutputStreams(ArrayList<ObjectOutputStream> outputStreams) {
+		this.outputStreams = outputStreams;
+	}
+
+	/**
+	 * Method that processes input from System.in. Only accepts join and leave commands
+	 * @params
+	 * @return
+	 */
+	public void processInput() {
 		@SuppressWarnings("resource")
 		Scanner scan = new Scanner(System.in);
 		String line;
 		String[] items;
+		boolean sendNewView = false;
+		line = scan.nextLine();
 
-		System.out.println("Controller App Started");
-		System.out.println("Usage:");
-		System.out.println("join <node id1> <node id2> ... <node idn>");
-		System.out.println("leave <node id> <node id2> ... <node idn>");
-		System.out.println(currentView.toString());
-		//loop to read command line input
-		while(true) {
-			line = scan.nextLine();
-
-			if(line.indexOf("join") != -1) {
-				items = line.split(" ");
-				for(int i = 1; i < items.length; i++) {
-					if(currentView.join(Integer.parseInt(items[i]))) {
-						sendNewView();
-					}
-					System.out.println(currentView.toString());
+		if((line.indexOf("join") != -1) || (line.indexOf("leave") != -1)) {
+			items = line.split(" ");
+			for(int i = 1; i < items.length; i++) {
+				if(items[0].equals("join")) {
+					sendNewView = currentView.join(Integer.parseInt(items[i]));		
 				}
-			}
-			else if(line.indexOf("leave") != -1) {
-				items = line.split(" ");
-				for(int i = 1; i < items.length; i++) {
-					if(currentView.leave(Integer.parseInt(items[i]))) {
-						sendNewView();
-					}
-					System.out.println(currentView.toString());
+				else if(items[0].equals("leave")) {
+					sendNewView = currentView.leave(Integer.parseInt(items[i]));		
 				}
-			}
-			else {
-				System.out.println("INVALID COMMAND. PLEASE TRY AGAIN.");
-				System.out.println("Usage:");
-				System.out.println("join <node id1> <node id2> ... <node idn>");
-				System.out.println("leave <node id> <node id2> ... <node idn>");
+				
+				if(sendNewView) {
+					sendNewView();
+				}
+				System.out.println(currentView.toString());
 			}
 		}
+		else {
+			System.out.println("INVALID COMMAND. PLEASE TRY AGAIN.");
+			System.out.println("Usage:");
+			System.out.println("join <node id1> <node id2> ... <node idn>");
+			System.out.println("leave <node id> <node id2> ... <node idn>");
+		}
 	}
-	public static void sendNewView(){
-		for(ObjectOutputStream obj: outputStreams) {
+
+	/**
+	 * Method that sends the new view to Group layer on each node via TCP
+	 * @param 
+	 * @return
+	 * @throws IOException
+	 */
+	public void sendNewView(){
+		for(ObjectOutputStream obj: this.outputStreams) {
 			try {
-				obj.writeObject(currentView);
+				obj.writeObject(this.currentView);
 				obj.flush();
 				obj.reset();
 			} catch (IOException e) {
