@@ -10,8 +10,8 @@ import java.net.SocketException;
 import view.View;
 
 public class Group {
-	private View currentView;
-	
+	private View currentView = null;
+
 	public Group() throws SocketException {
 		byte[] receiveData = new byte[1024];
 		@SuppressWarnings("resource")
@@ -25,7 +25,9 @@ public class Group {
 					try {
 						serverSocket.receive(receivePacket);
 						ObjectInputStream iStream = new ObjectInputStream(new ByteArrayInputStream(receivePacket.getData()));
-						currentView = (View) iStream.readObject();
+						synchronized (this){
+							currentView = (View) iStream.readObject();
+						}
 						System.out.println("RECEIVED: " + currentView.toString());
 						iStream.close();
 					} catch (IOException | ClassNotFoundException e) {
@@ -38,12 +40,17 @@ public class Group {
 		t1.start();
 	}
 
+	public View retrieveCurrentView() { //VSM calls this method to get the most recent view before sending a message
+		synchronized (this){
+			return currentView;
+		}
+	}
+
+
 	public void suspect() {
 
 	}
 
 
-	public View retrieveCurrentView() { //VSM calls this method to get the most recent view before sending a message
-		return null;
-	}
+
 }
