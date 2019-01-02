@@ -17,18 +17,16 @@ public class Send implements Runnable{
 		sender = new Thread(this, "my runnable thread");
 		this.group = group;
 		this.s = s;
-	    System.out.println("my sender created " + sender);
 	    scanner = new Scanner(System.in);
 	    
 	    sender.start();
 	}
 	
-	
 	@Override
 	public void run() {
 		
 		try {
-			while(true) {  // Para ficar aqui preso sempre pronto a enviar -> FALTA CRIAR UM STOP
+			while(true) {  // Para ficar aqui preso sempre pronto a enviar 
 				String read = scanner.next();
 				DatagramPacket hi = new DatagramPacket(read.getBytes(), read.length(), group, 6789);
 			//	System.out.println("Sending " + new String(hi.getData(), hi.getOffset(), hi.getLength()));

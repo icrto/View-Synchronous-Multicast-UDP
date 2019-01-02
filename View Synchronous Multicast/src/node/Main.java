@@ -2,7 +2,7 @@ package node;
 
 import java.io.IOException;
 
-import networkEmulation.NetworkEmulationMulticastSocket;
+//import networkEmulation.NetworkEmulationMulticastSocket;
 
 public class Main {
 
@@ -17,14 +17,14 @@ public class Main {
 		}
 		
 		Node node = new Node(args[0], args[1], args[2]);
-		NetworkEmulationMulticastSocket emul = new NetworkEmulationMulticastSocket(args[2], args[3], args[4], args[5]);
+		//NetworkEmulationMulticastSocket emul = new NetworkEmulationMulticastSocket(args[2], args[3], args[4], args[5]);
 
 		Receive rcv = new Receive(node.getS());
 		Send snd = new Send(node.getGroup(), node.getS());
 		 
 		 try
 		 {
-			 while(rcv.receiver.isAlive())
+			 while(rcv.receiver.isAlive() || snd.sender.isAlive())
 			 {
 				// System.out.println("Receiver is Alive"); 
 				 Thread.sleep(1500);
@@ -32,25 +32,10 @@ public class Main {
 		 }
 		 catch(InterruptedException e)
 		 {
-			 System.out.println("Receiver interrupted");
+			 System.out.println("One or two Threads interrupted");
 		 }
-		 System.out.println("Receiver run is over" );
+		 System.out.println("One or two Threads run is over" );
 
-		 try
-		 {
-			 while(snd.sender.isAlive())
-			 {
-				// System.out.println("Sender is Alive"); 
-				 Thread.sleep(1500);
-			 }
-		 }
-		 catch(InterruptedException e)
-		 {
-			 System.out.println("Sender interrupted");
-		 }
-		 System.out.println("Sender run is over" );
 
-		
 	}
-
 }

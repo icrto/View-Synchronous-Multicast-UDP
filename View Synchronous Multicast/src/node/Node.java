@@ -18,7 +18,6 @@ public class Node {
 		this.id = Integer.parseInt(id);
 		this.ip_group = ip_group;
 		this.socket = Integer.parseInt(socket);
-		
 		this.group = InetAddress.getByName(this.ip_group);  //228.5.6.7
 		this.s = new MulticastSocket(this.socket);
 		s.joinGroup(group);

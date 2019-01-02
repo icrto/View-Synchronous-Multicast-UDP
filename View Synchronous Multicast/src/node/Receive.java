@@ -12,7 +12,6 @@ public class Receive implements Runnable{
 	Receive(MulticastSocket s){
 		receiver = new Thread(this, "my runnable thread");
 		this.s = s;
-	    System.out.println("my receiver created" + receiver);
 	    receiver.start();
 	}
 
@@ -21,7 +20,7 @@ public class Receive implements Runnable{
 		try
 		{
 			 byte[] buf = new byte[1000];
-			 while(true) {  // Para ficar aqui preso sempre a receber -> FALTA CRIAR UM STOP
+			 while(true) {  // Para ficar aqui preso sempre a receber 
 				 DatagramPacket recv = new DatagramPacket(buf, buf.length);
 				 s.receive(recv);
 				 System.out.println("Receive: " + new String(recv.getData(), recv.getOffset(), recv.getLength()));	
