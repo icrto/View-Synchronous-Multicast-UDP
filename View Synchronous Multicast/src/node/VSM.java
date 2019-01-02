@@ -49,7 +49,7 @@ public class VSM extends Thread {
 
 		this.nodeId = nodeId;
 		stableMessages = new ArrayList<PayloadMessage>();
-		group = new Group();
+		group = new Group(nodeId);
 		currentView = group.retrieveCurrentView(); // this should block until the view is received by the controller
 
 		// TODO: check if sanity check below makes sense
