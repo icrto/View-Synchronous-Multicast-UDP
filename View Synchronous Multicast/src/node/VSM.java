@@ -22,7 +22,7 @@ import vsmMessage.PayloadMessage;
 
 public class VSM extends Thread {
 
-	private static final boolean DEBUG_PRINT = false;
+	private static final boolean DEBUG_PRINT = true;
 
 	private final Lock lock = new ReentrantLock();
 	private final Condition notEmpty = lock.newCondition();
@@ -39,15 +39,15 @@ public class VSM extends Thread {
 	private NetworkEmulationMulticastSocket s;
 	private int seqNumber = 1;
 
-	public VSM(int nodeId, String UDPmulticastIp, int port, double dropRate, double avgDelay, double stdDelay) throws IOException {
-
+	public VSM(String nodeIdStr, String UDPmulticastIp, String port, String dropRate, String avgDelay, String stdDelay) throws IOException {
+		
 		System.setProperty("java.net.preferIPv4Stack" , "true");
+		this.nodeId = Integer.parseInt(nodeIdStr);
 		UDPgroup = InetAddress.getByName(UDPmulticastIp);
-		UDPport = port;
+		UDPport = Integer.parseInt(port);
 		s = new NetworkEmulationMulticastSocket(port, dropRate, avgDelay, stdDelay);
 		s.joinGroup(UDPgroup);
 
-		this.nodeId = nodeId;
 		stableMessages = new ArrayList<PayloadMessage>();
 		group = new Group(nodeId);
 		currentView = group.retrieveCurrentView(); // this should block until the view is received by the controller
