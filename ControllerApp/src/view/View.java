@@ -1,7 +1,5 @@
 package view;
 import java.io.Serializable;
-import java.net.SocketException;
-import java.net.UnknownHostException;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -12,7 +10,7 @@ public class View implements Serializable{
 	private static final long serialVersionUID = 1L;
 	private int id = 0;
 	private Set<Integer> nodes;
-	public View() throws SocketException, UnknownHostException {
+	public View(){
 		this.nodes = new HashSet<Integer>();
 	}
 	public int getID() {

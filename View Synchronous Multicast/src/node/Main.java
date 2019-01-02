@@ -19,6 +19,7 @@ public class Main {
 		System.out.println(vsm.recvVSM());
 		System.out.println(vsm.recvVSM());
 		System.out.println(vsm.recvVSM());
+
 	}
 
 }
