@@ -81,7 +81,6 @@ public class Controller {
 	 * @return
 	 */
 	public void processInput() {
-		@SuppressWarnings("resource")
 		Scanner scan = new Scanner(System.in);
 		String line;
 		String[] items;
@@ -110,6 +109,7 @@ public class Controller {
 			System.out.println("join <node id1> <node id2> ... <node idn>");
 			System.out.println("leave <node id> <node id2> ... <node idn>");
 		}
+		scan.close();
 	}
 
 	/**
