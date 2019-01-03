@@ -39,16 +39,18 @@ public class VSM extends Thread {
 	private NetworkEmulationMulticastSocket s;
 	private int seqNumber = 1;
 
-	public VSM(String nodeIdStr, String UDPmulticastIp, String port, String dropRate, String avgDelay, String stdDelay) throws IOException {
+	public VSM(String nodeIdStr, String UDPmulticastIp, String port, String dropRate, String avgDelay, String stdDelay) {
 		
-		System.setProperty("java.net.preferIPv4Stack" , "true");
 		this.nodeId = Integer.parseInt(nodeIdStr);
-		UDPgroup = InetAddress.getByName(UDPmulticastIp);
 		UDPport = Integer.parseInt(port);
-		s = new NetworkEmulationMulticastSocket(port, dropRate, avgDelay, stdDelay);
-		s.joinGroup(UDPgroup);
-
-		stableMessages = new ArrayList<PayloadMessage>();
+		try {
+			UDPgroup = InetAddress.getByName(UDPmulticastIp);
+			s = new NetworkEmulationMulticastSocket(port, dropRate, avgDelay, stdDelay);
+			s.joinGroup(UDPgroup);
+		} catch (IOException e) {
+			System.out.println("ERROR: Failed to join UDP multicast group");
+		}
+		
 		//group = new Group(nodeId);
 		//currentView = group.retrieveCurrentView(); // this should block until the view is received by the controller
 
