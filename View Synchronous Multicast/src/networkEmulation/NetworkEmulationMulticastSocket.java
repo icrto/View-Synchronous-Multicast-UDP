@@ -12,11 +12,11 @@ public class NetworkEmulationMulticastSocket extends MulticastSocket {
 	double avgDelay = 0;
 	double stdDelay = 0;
 
-	public NetworkEmulationMulticastSocket(String port, String dropRate, String avgDelay, String stdDelay) throws IOException {
-		super(Integer.parseInt(port));
-		this.dropRate = Double.parseDouble(dropRate);
-		this.avgDelay = Double.parseDouble(avgDelay);
-		this.stdDelay = Double.parseDouble(stdDelay);
+	public NetworkEmulationMulticastSocket(int port, double dropRate2, double avgDelay2, double stdDelay2) throws IOException {
+		super(port);
+		this.dropRate = dropRate2;
+		this.avgDelay = avgDelay2;
+		this.stdDelay = stdDelay2;
 	}
 	
 	public void receive(DatagramPacket p) throws IOException {

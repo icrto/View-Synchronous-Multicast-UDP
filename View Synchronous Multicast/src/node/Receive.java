@@ -15,6 +15,7 @@ public class Receive implements Runnable{
 	public void run() {
 
 		while(true) {  // Para ficar aqui preso sempre a receber 
+			
 			System.out.println("Receive: " + vsm.recvVSM());	
 		}
 	}
