@@ -4,6 +4,9 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import view.View;
 
@@ -11,11 +14,11 @@ public class Group {
 	private View currentView = null;
 	private int nodeID;
 	private int basePort = 60000;
-	private Object obj = new Object();
-
+	private final Lock lock = new ReentrantLock();
+	private final Condition notNull = lock.newCondition();
 	public Group(int ID) {
 		this.nodeID = ID;
-		
+
 		Thread t1 = new Thread(new Runnable() {
 			@Override
 			public void run() {
@@ -27,13 +30,14 @@ public class Group {
 					try {
 						connectionSocket = welcomeSocket.accept(); //accept outside while loop -> server can only accept 1 connection per client
 						input = new ObjectInputStream(connectionSocket.getInputStream());
-						
+
 						while(true) {
 							try {
-								synchronized(obj) {
-									currentView = (View)input.readObject();
-									System.out.println("RECEIVED: " + currentView.toString());
-								}
+								lock.lock();
+								currentView = (View)input.readObject();
+								System.out.println("RECEIVED: " + currentView.toString());
+								notNull.signal();
+								lock.unlock();
 							} catch (IOException e) {
 								System.err.println("Connection Failed");
 								System.exit(-1);
@@ -56,9 +60,18 @@ public class Group {
 	}
 
 	public View retrieveCurrentView() { //VSM calls this method to get the most recent view before sending a message
-		synchronized (obj){
-			return currentView;
+		lock.lock();
+		try {
+			while(currentView == null) {
+				notNull.await();
+			}
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}finally{
+			lock.unlock();
 		}
+		return currentView;
 	}
 
 
