@@ -50,25 +50,27 @@ public class VSM extends Thread {
 		} catch (IOException e) {
 			System.out.println("ERROR: Failed to join UDP multicast group");
 		}
+		System.out.println("antes de retrieve");
+		group = new Group(nodeId);
+		System.out.println("depois de group");
+		currentView = group.retrieveCurrentView(); // this should block until the view is received by the controller
 		
-		//group = new Group(nodeId);
-		//currentView = group.retrieveCurrentView(); // this should block until the view is received by the controller
-
 		// TODO: check if sanity check below makes sense
-		/*if(currentView.getID() != 1) {
+		if(currentView.getID() != 1) {
 			System.out.println("ERROR: first retrieved view is not view 1");
 			System.exit(1);
-		}*/
+		}
 		
-
+		
 		
 		System.out.println(nodeId);
+		System.out.println("depois de retrieve");
 
 		//Testing
-		currentView = new View();
-		currentView.join(1);
-		currentView.join(2);
-		currentView.join(3);
+//		currentView = new View();
+//		currentView.join(1);
+//		currentView.join(2);
+//		currentView.join(3);
 	}
 	
 	/* **************************************
@@ -142,9 +144,13 @@ public class VSM extends Thread {
 		}
 		/* TODO: more checks needed
 		 * 		- what if the view id is > than current view?
-		 * 		- how to check for duplicates? 
+		 * 		- check for duplicates? 
 		 * 		- etc
+		 *
+		 * Need to store all messages untio view change
+		 *
 		 */
+		
 
 		// Add message to unstable message buffer and add entry in ackMap
 		unstableMessages.add(msg);

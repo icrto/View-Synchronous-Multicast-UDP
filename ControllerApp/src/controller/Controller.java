@@ -21,7 +21,7 @@ public class Controller {
 		this.currentView = new View(1);
 
 		//create sockets
-		for(int i = 0; i < nrNodes; i++) {
+		for(int i = 1; i < nrNodes + 1; i++) {
 
 			this.currentView.getNodes().add(i);
 
