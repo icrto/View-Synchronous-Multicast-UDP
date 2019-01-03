@@ -8,6 +8,7 @@ import java.util.Scanner;
 import view.View;
 
 public class Controller {
+	private Scanner scan = new Scanner(System.in);
 	private View currentView;
 	private int nrNodes;
 	private int basePort = 60000;
@@ -17,9 +18,13 @@ public class Controller {
 	public Controller(int nodes){
 
 		this.nrNodes = nodes;
+		this.currentView = new View(1);
 
 		//create sockets
 		for(int i = 0; i < nrNodes; i++) {
+
+			this.currentView.getNodes().add(i);
+
 			try {
 				Socket item = new Socket("localhost", basePort + i);
 				sockets.add(item);
@@ -31,7 +36,6 @@ public class Controller {
 
 		}
 
-		this.currentView = new View();
 
 	}
 
@@ -81,35 +85,35 @@ public class Controller {
 	 * @return
 	 */
 	public void processInput() {
-		Scanner scan = new Scanner(System.in);
 		String line;
 		String[] items;
 		boolean sendNewView = false;
-		line = scan.nextLine();
+		if(scan.hasNextLine()) {
+			line = scan.nextLine();
 
-		if((line.indexOf("join") != -1) || (line.indexOf("leave") != -1)) {
-			items = line.split(" ");
-			for(int i = 1; i < items.length; i++) {
-				if(items[0].equals("join")) {
-					sendNewView = currentView.join(Integer.parseInt(items[i]));		
+			if((line.indexOf("join") != -1) || (line.indexOf("leave") != -1)) {
+				items = line.split(" ");
+				for(int i = 1; i < items.length; i++) {
+					if(items[0].equals("join")) {
+						sendNewView = currentView.join(Integer.parseInt(items[i]));		
+					}
+					else if(items[0].equals("leave")) {
+						sendNewView = currentView.leave(Integer.parseInt(items[i]));		
+					}
+
+					if(sendNewView) {
+						sendNewView();
+					}
+					System.out.println(currentView.toString());
 				}
-				else if(items[0].equals("leave")) {
-					sendNewView = currentView.leave(Integer.parseInt(items[i]));		
-				}
-				
-				if(sendNewView) {
-					sendNewView();
-				}
-				System.out.println(currentView.toString());
+			}
+			else {
+				System.out.println("INVALID COMMAND. PLEASE TRY AGAIN.");
+				System.out.println("Usage:");
+				System.out.println("join <node id1> <node id2> ... <node idn>");
+				System.out.println("leave <node id> <node id2> ... <node idn>");
 			}
 		}
-		else {
-			System.out.println("INVALID COMMAND. PLEASE TRY AGAIN.");
-			System.out.println("Usage:");
-			System.out.println("join <node id1> <node id2> ... <node idn>");
-			System.out.println("leave <node id> <node id2> ... <node idn>");
-		}
-		scan.close();
 	}
 
 	/**

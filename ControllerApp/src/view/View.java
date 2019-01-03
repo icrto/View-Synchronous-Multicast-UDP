@@ -10,11 +10,15 @@ public class View implements Serializable{
 	private static final long serialVersionUID = 1L;
 	private int id = 0;
 	private Set<Integer> nodes;
-	public View(){
+	public View(int id){
+		this.id = id;
 		this.nodes = new HashSet<Integer>();
 	}
 	public int getID() {
 		return id;
+	}
+	public void setID(int id) {
+		this.id = id;
 	}
 	public Set<Integer> getNodes() {
 		return nodes;
