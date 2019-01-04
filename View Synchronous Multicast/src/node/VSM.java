@@ -22,7 +22,7 @@ import vsmMessage.PayloadMessage;
 
 public class VSM extends Thread {
 
-	private static final boolean DEBUG_PRINT = true;
+	private static final boolean DEBUG_PRINT = false;
 
 	private final Lock lock = new ReentrantLock();
 	private final Condition notEmpty = lock.newCondition();
@@ -39,10 +39,10 @@ public class VSM extends Thread {
 	private NetworkEmulationMulticastSocket s;
 	private int seqNumber = 1;
 
-	public VSM(String nodeIdStr, String UDPmulticastIp, String port, String dropRate, String avgDelay, String stdDelay) {
+	public VSM(int iD, String UDPmulticastIp, int port, double dropRate, double avgDelay, double stdDelay) {
 		
-		this.nodeId = Integer.parseInt(nodeIdStr);
-		UDPport = Integer.parseInt(port);
+		this.nodeId = iD;
+		UDPport = port;
 		try {
 			UDPgroup = InetAddress.getByName(UDPmulticastIp);
 			s = new NetworkEmulationMulticastSocket(port, dropRate, avgDelay, stdDelay);
@@ -50,9 +50,9 @@ public class VSM extends Thread {
 		} catch (IOException e) {
 			System.out.println("ERROR: Failed to join UDP multicast group");
 		}
-		System.out.println("antes de retrieve");
+		//System.out.println("antes de retrieve");
 		group = new Group(nodeId);
-		System.out.println("depois de group");
+		//System.out.println("depois de group");
 		currentView = group.retrieveCurrentView(); // this should block until the view is received by the controller
 		
 		// TODO: check if sanity check below makes sense
@@ -64,7 +64,7 @@ public class VSM extends Thread {
 		
 		
 		System.out.println(nodeId);
-		System.out.println("depois de retrieve");
+	//	System.out.println("depois de retrieve");
 
 		//Testing
 //		currentView = new View();
