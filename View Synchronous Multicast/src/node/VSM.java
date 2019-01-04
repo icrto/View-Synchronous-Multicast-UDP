@@ -19,6 +19,7 @@ import networkEmulation.NetworkEmulationMulticastSocket;
 import view.View;
 import vsmMessage.AckMessage;
 import vsmMessage.Message;
+import vsmMessage.PayloadAcksMessage;
 import vsmMessage.PayloadMessage;
 
 public class VSM extends Thread {
@@ -56,7 +57,6 @@ public class VSM extends Thread {
 		//System.out.println("depois de group");
 		currentView = group.retrieveCurrentView(); // this should block until the view is received by the controller
 
-		// TODO: check if sanity check below makes sense
 		if(currentView.getID() != 1) {
 			System.out.println("ERROR: first retrieved view is not view 1");
 			System.exit(1);
@@ -110,7 +110,9 @@ public class VSM extends Thread {
 			if(DEBUG_PRINT) {
 				if(msg instanceof PayloadMessage) System.out.println("DEBUG: Received payload: \"" + ((PayloadMessage)msg).getPayload() + "\"");
 				else if(msg instanceof AckMessage) System.out.println("DEBUG: Received ack for message sent from " + (((AckMessage)msg).getAckSenderId()) + 
-						" with sequence number " + (((AckMessage)msg).getAckSeqN()));
+						" with sequence number " + (((AckMessage)msg).getAckSeqN())); 
+				else if(msg instanceof PayloadAcksMessage) System.out.println("DEBUG: Received payload: \"" + ((PayloadMessage)msg).getPayload() + "\" with acks " 
+						+ ((PayloadAcksMessage)msg).getAckIds().toString());
 			}
 
 			// Handle received msg
@@ -124,6 +126,9 @@ public class VSM extends Thread {
 			} else if (msg.getMessageType() == Message.ACK_MESSAGE) {
 				if(DEBUG_PRINT) System.out.println("DEBUG: Received ack message, starting to process it...");
 				handleAckMessage((AckMessage)msg);
+			} else if (msg.getMessageType() == Message.PAYLOAD_ACKS_MESSAGE) {
+				if(DEBUG_PRINT) System.out.println("DEBUG: Received payload with acks message, starting to process it...");
+				handlePayloadAcksMessage((AckMessage)msg);
 			} else {
 				System.out.println("ERROR: Received message with unknown type, continued...");
 				continue;
@@ -165,7 +170,6 @@ public class VSM extends Thread {
 	}
 
 	private void handleAckMessage(AckMessage msg) {
-		// TODO Auto-generated method stub
 		if(msg.getViewId() < currentView.getID()) {
 			if(DEBUG_PRINT) System.out.println("DEBUG: Received message from previous view, discarded..");
 			return;
@@ -199,6 +203,11 @@ public class VSM extends Thread {
 			}
 		}
 	}
+	
+	private void handlePayloadAcksMessage(AckMessage msg) {
+		// TODO Auto-generated method stub
+		
+	}
 
 	/* **************************************
 	 * 										*
@@ -208,10 +217,6 @@ public class VSM extends Thread {
 
 	public void sendVSM(String payload) throws IOException {
 		// Build and send a datagram with serialized Payload Message
-		/* TODO: check if it's needed to self-deliver right away. 
-		 * Right now self delivery occurs but only after the message becomes stable just as any other message.
-		 * In the slides self-delivery is done right away to ensure liveness?
-		 */
 
 		updateView();
 		while(changingView);

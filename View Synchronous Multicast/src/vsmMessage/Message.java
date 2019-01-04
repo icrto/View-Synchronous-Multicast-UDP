@@ -11,6 +11,7 @@ public class Message implements Serializable {
 	
 	public static final int PAYLOAD_MESSAGE = 1;
 	public static final int ACK_MESSAGE = 2;
+	public static final int PAYLOAD_ACKS_MESSAGE = 3;
 	
 	private int viewId = -1;
 	private int messageType = -1;
