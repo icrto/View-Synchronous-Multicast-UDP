@@ -29,8 +29,8 @@ public class VSM extends Thread {
 
 	private int nodeId;
 	private volatile ArrayList<PayloadMessage> stableMessages = new ArrayList<PayloadMessage>();
-	private ArrayList<PayloadMessage> unstableMessages = new ArrayList<PayloadMessage>();
-	private ArrayList<AckMap> ackMaps = new ArrayList<AckMap>();
+	//private ArrayList<PayloadMessage> unstableMessages = new ArrayList<PayloadMessage>();
+	private ArrayList<MessageAcks> unstableMessages = new ArrayList<MessageAcks>();
 	private boolean changingView = false;
 	private Group group;
 	private View currentView;
@@ -89,7 +89,6 @@ public class VSM extends Thread {
 		Message msg = null;
 		
 		while(true) {
-			updateView();
 			recv = new DatagramPacket(buffer, buffer.length);
 
 			try {
@@ -153,8 +152,7 @@ public class VSM extends Thread {
 		
 
 		// Add message to unstable message buffer and add entry in ackMap
-		unstableMessages.add(msg);
-		ackMaps.add(new AckMap(msg.getSenderId(), msg.getSeqN()));
+		unstableMessages.add(new MessageAcks(msg));
 
 		// Send ack
 		AckMessage ackMessage = new AckMessage(currentView.getID(), Message.ACK_MESSAGE, nodeId, msg.getSenderId(), msg.getSeqN());
@@ -181,25 +179,19 @@ public class VSM extends Thread {
 		 * 		- etc
 		 */
 
-		for(int i = 0; i < ackMaps.size(); i++) {
-			AckMap ackMap = ackMaps.get(i);
-			if(ackMap.senderId == msg.getAckSenderId() && ackMap.seqN == msg.getAckSeqN()) {
-				if(ackMap.ackIds.contains(msg.getSenderId())) {
+		for(int i = 0; i < unstableMessages.size(); i++) {
+			MessageAcks acks = unstableMessages.get(i);
+			if(acks.message.getSenderId() == msg.getAckSenderId() && acks.message.getSeqN() == msg.getAckSeqN()) {
+				if(acks.ackIds.contains(msg.getSenderId())) {
 					return;
 				} else {
-					ackMap.ackIds.add(msg.getSenderId());
+					acks.ackIds.add(msg.getSenderId());
 				}
-				if(ackMap.ackIds.size() == currentView.getNodes().size()) {
-					int j;
-					for(j = 0; j < unstableMessages.size(); j++) {
-						if(unstableMessages.get(j).getSeqN() == ackMap.seqN && unstableMessages.get(j).getSenderId() == ackMap.senderId)
-							break;
-					}
+				if(acks.ackIds.size() == currentView.getNodes().size()) {
 					if(DEBUG_PRINT) System.out.println("DEBUG: a message has become stable, transfering to stable message list...");
 					lock.lock();
-					stableMessages.add(unstableMessages.get(j));
-					unstableMessages.remove(j);
-					ackMaps.remove(i);
+					stableMessages.add(unstableMessages.get(i).message);
+					unstableMessages.remove(i);
 					notEmpty.signal();
 					lock.unlock();
 				}
@@ -234,7 +226,6 @@ public class VSM extends Thread {
 
 	public String recvVSM() {
 		// Return a stable message or wait until there is one available
-		// TODO: change busy waiting below to conditions variables
 		String payload = null;
 		
 		lock.lock();
@@ -254,7 +245,7 @@ public class VSM extends Thread {
 	}
 	
 
-	/* **************************************
+	/* ***************************************
 	 * 										*
 	 * 			Auxiliary Methods 			*
 	 * 										*
@@ -264,7 +255,7 @@ public class VSM extends Thread {
 		//		View retrievedView = group.retrieveCurrentView();
 		//		if(currentView.equals(retrievedView)) return;
 		//		else {
-		//			changingView = false;
+		//			changingView = true;
 		//			/* TODO: Change view!!!!!!!!!!!!
 		//			 * 
 		//			 * Notes:
@@ -321,14 +312,12 @@ public class VSM extends Thread {
 	 ****************************************/
 
 
-	private class AckMap {
-		public int senderId = -1;
-		public int seqN = -1;
-		public ArrayList<Integer> ackIds = new ArrayList<Integer>();
-		public AckMap(int senderId, int seqN) {
+	private class MessageAcks {
+		public PayloadMessage message = null;
+		public ArrayList<Integer> ackIds = new ArrayList<Integer>(); // TODO: Check if it's better to remove ids instead of adding them 
+		public MessageAcks(PayloadMessage message) {
 			super();
-			this.senderId = senderId;
-			this.seqN = seqN;
+			this.message = message;
 		}
 	}
 }
