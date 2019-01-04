@@ -48,4 +48,32 @@ public class Message implements Serializable {
 		this.senderId = senderId;
 	}
 
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + messageType;
+		result = prime * result + senderId;
+		result = prime * result + viewId;
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		Message other = (Message) obj;
+		if (messageType != other.messageType)
+			return false;
+		if (senderId != other.senderId)
+			return false;
+		if (viewId != other.viewId)
+			return false;
+		return true;
+	}
+	
 }
