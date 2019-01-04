@@ -10,6 +10,7 @@ import java.io.ObjectOutputStream;
 import java.net.DatagramPacket;
 import java.net.InetAddress;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -40,7 +41,7 @@ public class VSM extends Thread {
 	private int seqNumber = 1;
 
 	public VSM(int iD, String UDPmulticastIp, int port, double dropRate, double avgDelay, double stdDelay) {
-		
+
 		this.nodeId = iD;
 		UDPport = port;
 		try {
@@ -54,25 +55,25 @@ public class VSM extends Thread {
 		group = new Group(nodeId);
 		//System.out.println("depois de group");
 		currentView = group.retrieveCurrentView(); // this should block until the view is received by the controller
-		
+
 		// TODO: check if sanity check below makes sense
 		if(currentView.getID() != 1) {
 			System.out.println("ERROR: first retrieved view is not view 1");
 			System.exit(1);
 		}
-		
-		
-		
+
+
+
 		System.out.println(nodeId);
-	//	System.out.println("depois de retrieve");
+		//	System.out.println("depois de retrieve");
 
 		//Testing
-//		currentView = new View();
-//		currentView.join(1);
-//		currentView.join(2);
-//		currentView.join(3);
+		//		currentView = new View();
+		//		currentView.join(1);
+		//		currentView.join(2);
+		//		currentView.join(3);
 	}
-	
+
 	/* **************************************
 	 * 										*
 	 * 		Receiver thread code 			*
@@ -87,7 +88,7 @@ public class VSM extends Thread {
 		byte[] buffer = new byte[2000]; // Need to be careful with this value 
 		DatagramPacket recv;
 		Message msg = null;
-		
+
 		while(true) {
 			recv = new DatagramPacket(buffer, buffer.length);
 
@@ -149,7 +150,7 @@ public class VSM extends Thread {
 		 * Need to store all messages untio view change
 		 *
 		 */
-		
+
 
 		// Add message to unstable message buffer and add entry in ackMap
 		unstableMessages.add(new MessageAcks(msg));
@@ -178,28 +179,27 @@ public class VSM extends Thread {
 		 * 		- how to check for duplicates? 
 		 * 		- etc
 		 */
-
-		for(int i = 0; i < unstableMessages.size(); i++) {
-			MessageAcks acks = unstableMessages.get(i);
+		
+		/* 
+		 * Searches for the message being acked and registers the ack
+		 * Also transfers the message to the stable buffer if all acks have been received
+		 */
+		for(MessageAcks acks :unstableMessages) {
 			if(acks.message.getSenderId() == msg.getAckSenderId() && acks.message.getSeqN() == msg.getAckSeqN()) {
-				if(acks.ackIds.contains(msg.getSenderId())) {
-					return;
-				} else {
-					acks.ackIds.add(msg.getSenderId());
-				}
+				acks.ackIds.add(msg.getSenderId());
 				if(acks.ackIds.size() == currentView.getNodes().size()) {
 					if(DEBUG_PRINT) System.out.println("DEBUG: a message has become stable, transfering to stable message list...");
 					lock.lock();
-					stableMessages.add(unstableMessages.get(i).message);
-					unstableMessages.remove(i);
+					stableMessages.add(acks.message);
 					notEmpty.signal();
 					lock.unlock();
+					unstableMessages.remove(acks);
 				}
 				return;
 			}
 		}
 	}
-	
+
 	/* **************************************
 	 * 										*
 	 * 			VSM API Methods 				*
@@ -227,7 +227,7 @@ public class VSM extends Thread {
 	public String recvVSM() {
 		// Return a stable message or wait until there is one available
 		String payload = null;
-		
+
 		lock.lock();
 		try {
 			while(stableMessages.size() == 0) {
@@ -243,14 +243,14 @@ public class VSM extends Thread {
 
 		return payload;
 	}
-	
+
 
 	/* ***************************************
 	 * 										*
 	 * 			Auxiliary Methods 			*
 	 * 										*
 	 ****************************************/
-	
+
 	private void updateView() {
 		//		View retrievedView = group.retrieveCurrentView();
 		//		if(currentView.equals(retrievedView)) return;
@@ -314,7 +314,7 @@ public class VSM extends Thread {
 
 	private class MessageAcks {
 		public PayloadMessage message = null;
-		public ArrayList<Integer> ackIds = new ArrayList<Integer>(); // TODO: Check if it's better to remove ids instead of adding them 
+		public HashSet<Integer> ackIds = new HashSet<Integer>(); // TODO: Check if it's better to remove ids instead of adding them 
 		public MessageAcks(PayloadMessage message) {
 			super();
 			this.message = message;
