@@ -85,7 +85,7 @@ public class VSM extends Thread {
 		System.out.println("Receiver thread starting...");
 		// Receiver thread code goes here
 
-		byte[] buffer = new byte[2000]; // Need to be careful with this value 
+		byte[] buffer = new byte[2000]; // TODO: Choose size for receiver buffer
 		DatagramPacket recv;
 		Message msg = null;
 
@@ -324,5 +324,43 @@ public class VSM extends Thread {
 			super();
 			this.message = message;
 		}
+		
+		@Override
+		public int hashCode() {
+			final int prime = 31;
+			int result = 1;
+			result = prime * result + getOuterType().hashCode();
+			result = prime * result + ((ackIds == null) ? 0 : ackIds.hashCode());
+			result = prime * result + ((message == null) ? 0 : message.hashCode());
+			return result;
+		}
+		
+		@Override
+		public boolean equals(Object obj) {
+			if (this == obj)
+				return true;
+			if (obj == null)
+				return false;
+			if (getClass() != obj.getClass())
+				return false;
+			MessageAcks other = (MessageAcks) obj;
+			if (!getOuterType().equals(other.getOuterType()))
+				return false;
+			if (ackIds == null) {
+				if (other.ackIds != null)
+					return false;
+			} else if (!ackIds.equals(other.ackIds))
+				return false;
+			if (message == null) {
+				if (other.message != null)
+					return false;
+			} else if (!message.equals(other.message))
+				return false;
+			return true;
+		}
+		private VSM getOuterType() {
+			return VSM.this;
+		}
+		
 	}
 }
