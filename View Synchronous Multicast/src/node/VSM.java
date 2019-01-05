@@ -131,6 +131,9 @@ public class VSM extends Thread {
 
 		}
 	}
+	
+	
+	//Verficar aqui os duplicados
 
 	private void handlePayloadMessage(PayloadMessage msg) throws IOException {
 		// Check message for duplicates or if it is from the correct view
@@ -321,6 +324,7 @@ public class VSM extends Thread {
 	 ****************************************/
 
 
+	//Começar a construção do array ao contrario. Começar com todos e ir removendo
 	private class AckMap {
 		public int senderId = -1;
 		public int seqN = -1;

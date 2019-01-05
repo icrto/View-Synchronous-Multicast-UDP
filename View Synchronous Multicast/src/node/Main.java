@@ -5,6 +5,8 @@ import java.util.Scanner;
 
 public class Main {
 
+	private static Scanner scanner;
+
 	public static void main(String[] args) throws IOException {
 		// ARGS: 0->id  1->ip_group  2->port  3->dropRate 4->avgDelay  5->stdDelay
 		
@@ -38,7 +40,7 @@ public class Main {
 
 		Receive rcv = new Receive(vsm);
 		
-		Scanner scanner = new Scanner(System.in);
+		scanner = new Scanner(System.in);
 		 
 		 while(rcv.receiver.isAlive()) 
 		 {
