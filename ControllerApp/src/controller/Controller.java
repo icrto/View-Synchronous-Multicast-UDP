@@ -1,9 +1,12 @@
 package controller;
+import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.Scanner;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import view.View;
 
@@ -14,6 +17,8 @@ public class Controller {
 	private int basePort = 60000;
 	private ArrayList<Socket> sockets = new ArrayList<Socket>();
 	private ArrayList<ObjectOutputStream> outputStreams = new ArrayList<ObjectOutputStream>();
+	private ArrayList<DataInputStream> inputStreams = new ArrayList<DataInputStream>();
+	private final Lock lock = new ReentrantLock();
 
 	public Controller(int nodes){
 
@@ -29,13 +34,38 @@ public class Controller {
 				Socket item = new Socket("localhost", basePort + i);
 				sockets.add(item);
 				outputStreams.add(new ObjectOutputStream(item.getOutputStream()));
+				inputStreams.add(new DataInputStream(item.getInputStream()));
 			} catch (IOException e) {
 				System.err.println("Could Not Listen on Port: " + (basePort + i));
 				System.exit(-1);
 			}
 
 		}
-
+		Thread t1 = new Thread(new Runnable() {
+			@Override
+			public void run() {
+				Integer aux = null;
+				while(true) {
+					for(int i = 1; i < nrNodes + 1; i++) {
+						try {
+							if(inputStreams.get(i).available() > 0) {
+									aux = inputStreams.get(i).readInt();
+									lock.lock();
+									if(currentView.leave(aux)) {
+										sendNewView();
+									}
+									lock.unlock();
+							}
+						} catch (IOException e) {
+							System.err.println("Could Not Get Data from Port: " + (basePort + i));
+							System.exit(-1);
+						}
+						
+					}
+				}  
+			}
+		});  
+		t1.start();
 
 	}
 
@@ -95,10 +125,14 @@ public class Controller {
 				items = line.split(" ");
 				for(int i = 1; i < items.length; i++) {
 					if(items[0].equals("join")) {
+						lock.lock();
 						sendNewView = currentView.join(Integer.parseInt(items[i]));		
+						lock.unlock();
 					}
 					else if(items[0].equals("leave")) {
+						lock.lock();
 						sendNewView = currentView.leave(Integer.parseInt(items[i]));		
+						lock.unlock();
 					}
 
 					if(sendNewView) {
@@ -125,7 +159,9 @@ public class Controller {
 	public void sendNewView(){
 		for(ObjectOutputStream obj: this.outputStreams) {
 			try {
+				lock.lock();
 				obj.writeObject(this.currentView);
+				lock.unlock();
 				obj.flush();
 				obj.reset();
 			} catch (IOException e) {
