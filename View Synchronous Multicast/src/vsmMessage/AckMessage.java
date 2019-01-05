@@ -32,4 +32,29 @@ public class AckMessage extends Message {
 		this.ackSeqN = ackSeqN;
 	}
 
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = super.hashCode();
+		result = prime * result + ackSenderId;
+		result = prime * result + ackSeqN;
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (!super.equals(obj))
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		AckMessage other = (AckMessage) obj;
+		if (ackSenderId != other.ackSenderId)
+			return false;
+		if (ackSeqN != other.ackSeqN)
+			return false;
+		return true;
+	}
+
 }

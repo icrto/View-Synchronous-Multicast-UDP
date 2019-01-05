@@ -39,7 +39,6 @@ public class Group {
 								currentView = aux;
 								System.out.println("RECEIVED: " + currentView.toString());
 								notNull.signal();
-								System.out.println("Enviou Signal");
 								lock.unlock();
 							} catch (IOException e) {
 								System.err.println("Connection Failed");
@@ -64,7 +63,6 @@ public class Group {
 
 	public View retrieveCurrentView() { //VSM calls this method to get the most recent view before sending a message
 		lock.lock();
-		System.out.println("Entrou no lock");
 		try {
 			while(currentView == null) {
 				notNull.await();
