@@ -18,7 +18,6 @@ import java.util.concurrent.locks.*;
 import networkEmulation.NetworkEmulationMulticastSocket;
 import view.View;
 import util.*;
-import vsmMessage.AckFlushMessage;
 import vsmMessage.AckMessage;
 import vsmMessage.FlushMessage;
 import vsmMessage.Message;
@@ -39,9 +38,9 @@ public class VSM extends Thread {
 	private HashSet<PayloadMessage> stableMessages = new HashSet<PayloadMessage>();
 	private SortedSet<MessageAcks> futureViewMessagesAcks = new TreeSet<MessageAcks>();
 
-	private boolean changingView = false;
-
 	private LinkedBlockingQueue<View> viewQueue = new LinkedBlockingQueue<View>();
+	
+	private HashSet<FlushMessage> receivedFlushes = new HashSet<FlushMessage>();
 
 	private Group group;
 	private View currentView;
@@ -68,12 +67,12 @@ public class VSM extends Thread {
 
 		group = new Group(this, nodeId);
 
-		//currentView = group.retrieveCurrentView(); // this should block until the view is received by the controller
+		currentView = new View(0);
 
-		if(currentView.getID() != 1) {
-			System.out.println("ERROR: first retrieved view is not view 1");
-			System.exit(1);
-		}
+//		if(currentView.getID() != 1) {
+//			System.out.println("ERROR: first retrieved view is not view 1");
+//			System.exit(1);
+//		}
 
 		System.out.println("This node has ID " + nodeId);
 	}
@@ -286,11 +285,37 @@ public class VSM extends Thread {
 			return;
 		}
 		// Future view
-		// TODO: Check about ack sender not being made!!!!
 		if(msg.getViewId() > currentView.getID()) {
 			if(DEBUG_PRINT) System.out.println("DEBUG: Received flush from previous view, discarded..");
 			return;
 		}
+		/*
+		 * TODO: check if more verifications are needed
+		 */
+
+		lock.lock();
+		if(undeliveredMessagesAcks.isEmpty() && deliveredMessagesAcks.isEmpty()) {
+			lock.unlock();
+			HashSet<Tuple<Integer, Integer>> flushStableMsgsIDs = msg.getStableMsgsIDs();
+			HashSet<Tuple<Integer, Integer>> stableMsgsIDs = createTupleSet(stableMessages);
+			
+			// Flush valid if node that flushed had the same stable messages
+			if(flushStableMsgsIDs.equals(stableMsgsIDs)) {
+				receivedFlushes.add(msg);
+				if(receivedFlushes.size() == currentView.getNodes().size()) {
+					receivedFlushes = new HashSet<FlushMessage>(); // Delete all received flushes
+					
+					// New view installed
+					currentView = viewQueue.element();
+					viewQueue.remove(currentView);
+				}
+			} else {
+				return;
+			}
+		} else {
+			lock.unlock();
+		}
+
 	}
 
 	/* **************************************
@@ -436,15 +461,18 @@ public class VSM extends Thread {
 	}
 
 	private void sendFlush() {
+		FlushMessage flush = new FlushMessage(currentView.getID() , nodeId,  createTupleSet(stableMessages));
+		sendMsg(flush);
+	}
+	
+	private HashSet<Tuple<Integer, Integer>> createTupleSet(HashSet<PayloadMessage> msgs) {
 		HashSet<Tuple<Integer, Integer>> stableMsgsIDs = new HashSet<Tuple<Integer, Integer>>();
 		lock.lock();
-		for(PayloadMessage msg: stableMessages) {
+		for(PayloadMessage msg: msgs) {
 			stableMsgsIDs.add(new Tuple<Integer, Integer>(msg.getSenderId(), msg.getSeqN()));
 		}
 		lock.unlock();
-		FlushMessage flush = new FlushMessage(currentView.getID() , nodeId, stableMsgsIDs);
-
-		sendMsg(flush);
+		return stableMsgsIDs;
 	}
 
 
@@ -503,8 +531,6 @@ public class VSM extends Thread {
 				System.out.println("DEBUG: ack message sent: " + (AckMessage)msg);
 			} else if(msg instanceof FlushMessage) {
 				System.out.println("DEBUG: flush message sent: " + (FlushMessage)msg);
-			} else if (msg instanceof AckFlushMessage) {
-				System.out.println("DEBUG: ack flush message sent: " + (AckFlushMessage)msg);
 			} else if (msg instanceof PayloadAcksMessage) {
 				System.out.println("DEBUG: payload acks message sent: " + (PayloadAcksMessage)msg);
 			} else {
