@@ -17,8 +17,8 @@ public class Group {
 	private int nodeID;
 	private int basePort = 60000;
 	private ServerSocket welcomeSocket = null;
-	private 	Socket connectionSocket;
-	private 	ObjectInputStream input = null;
+	private Socket connectionSocket;
+	private ObjectInputStream input = null;
 	private DataOutputStream output = null;
 	private final Lock lock = new ReentrantLock();
 	private final Condition notNull = lock.newCondition();
