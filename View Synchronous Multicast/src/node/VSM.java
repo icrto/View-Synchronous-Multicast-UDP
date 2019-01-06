@@ -9,12 +9,18 @@ import java.io.ObjectOutput;
 import java.io.ObjectOutputStream;
 import java.net.DatagramPacket;
 import java.net.InetAddress;
+import java.net.SocketException;
+import java.net.SocketTimeoutException;
 import java.util.*;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.locks.*;
 
 import networkEmulation.NetworkEmulationMulticastSocket;
 import view.View;
+import util.*;
+import vsmMessage.AckFlushMessage;
 import vsmMessage.AckMessage;
+import vsmMessage.FlushMessage;
 import vsmMessage.Message;
 import vsmMessage.PayloadAcksMessage;
 import vsmMessage.PayloadMessage;
@@ -34,17 +40,24 @@ public class VSM extends Thread {
 	private SortedSet<MessageAcks> futureViewMessagesAcks = new TreeSet<MessageAcks>();
 
 	private boolean changingView = false;
+
+	private LinkedBlockingQueue<View> viewQueue = new LinkedBlockingQueue<View>();
+
 	private Group group;
 	private View currentView;
 	private InetAddress UDPgroup;
 	private int UDPport;
 	private NetworkEmulationMulticastSocket s;
+	private int timeout;
 	private int seqNumber = 1;
 
-	public VSM(int iD, String UDPmulticastIp, int port, double dropRate, double avgDelay, double stdDelay) {
+	private Boolean becameEmpty = true;
+
+	public VSM(int iD, String UDPmulticastIp, int port, int timeout, double dropRate, double avgDelay, double stdDelay) {
 
 		this.nodeId = iD;
 		UDPport = port;
+		this.timeout = timeout;
 		try {
 			UDPgroup = InetAddress.getByName(UDPmulticastIp);
 			s = new NetworkEmulationMulticastSocket(port, dropRate, avgDelay, stdDelay);
@@ -53,26 +66,16 @@ public class VSM extends Thread {
 			System.out.println("ERROR: Failed to join UDP multicast group");
 		}
 
-		//System.out.println("antes de retrieve");
-		group = new Group(nodeId);
-		//System.out.println("depois de group");
-		currentView = group.retrieveCurrentView(); // this should block until the view is received by the controller
+		group = new Group(this, nodeId);
+
+		//currentView = group.retrieveCurrentView(); // this should block until the view is received by the controller
 
 		if(currentView.getID() != 1) {
 			System.out.println("ERROR: first retrieved view is not view 1");
 			System.exit(1);
 		}
 
-
-
-		System.out.println(nodeId);
-		//	System.out.println("depois de retrieve");
-
-		//Testing
-		//		currentView = new View();
-		//		currentView.join(1);
-		//		currentView.join(2);
-		//		currentView.join(3);
+		System.out.println("This node has ID " + nodeId);
 	}
 
 	/* **************************************
@@ -86,53 +89,89 @@ public class VSM extends Thread {
 		System.out.println("Receiver thread starting...");
 		// Receiver thread code goes here
 
-		byte[] buffer = new byte[2000]; // TODO: Choose size for receiver buffer
-		DatagramPacket recv;
 		Message msg = null;
 
+		View mostRecentNotInstalledView = null;
+		Boolean unstableMsgsSent = false; // TODO: change to false when installed all new views
+
+		long unstableMsgsSentTime = 0;
+
 		while(true) {
-			recv = new DatagramPacket(buffer, buffer.length);
 
-			try {
-				s.receive(recv);
-			} catch (IOException e) {
-				System.out.println("ERROR: Failed to receive UDP datagram, continued...");
-				continue;
-			}
+			// If the queue isn't empty then view change algorithm is run
+			if(!viewQueue.isEmpty()) {
 
-			try {
-				msg = bytesToMessage(recv.getData());
-			} catch (ClassNotFoundException | IOException e) {
-				System.out.println("ERROR: Failed to deserialize byte array to a message object, continued...");
-				continue;
-			}
-			//
-			//			//Testing
-			//			if(DEBUG_PRINT) {
-			//				if(msg instanceof PayloadMessage) System.out.println("DEBUG: Received payload: \"" + ((PayloadMessage)msg).getPayload() + "\"");
-			//				else if(msg instanceof AckMessage) System.out.println("DEBUG: Received ack for message sent from " + (((AckMessage)msg).getAckSenderId()) + 
-			//						" with sequence number " + (((AckMessage)msg).getAckSeqN())); 
-			//				else if(msg instanceof PayloadAcksMessage) System.out.println("DEBUG: Received payload: \"" + ((PayloadMessage)msg).getPayload() + "\" with acks " 
-			//						+ ((PayloadAcksMessage)msg).getAckIds().toString());
-			//			}
+				mostRecentNotInstalledView = getLastElement(viewQueue); // TODO: don't do this every time
 
-			// Handle received msg
-			if(msg.getMessageType() == Message.PAYLOAD_MESSAGE) {
-				if(DEBUG_PRINT) System.out.println("DEBUG: Received payload message, starting to process it...");
-				try {
-					handlePayloadMessage((PayloadMessage)msg);
-				} catch (IOException e) {
-					System.out.println("ERROR: Failed to send ack (serialization or socket problem), continued...");
+				if(!unstableMsgsSent) {
+					updateUnstableMsgsAcks(mostRecentNotInstalledView);
+					// TODO: sendUnstableMsgs();
+					unstableMsgsSentTime = System.currentTimeMillis();
+					unstableMsgsSent = true; 
+				} 
+
+				if(unstableMsgsSent && unstableMsgsSentTime + timeout <= System.currentTimeMillis()) {
+					// TODO: suspect de quem não recebeu ack
 				}
-			} else if (msg.getMessageType() == Message.ACK_MESSAGE) {
-				if(DEBUG_PRINT) System.out.println("DEBUG: Received ack message, starting to process it...");
-				handleAckMessage((AckMessage)msg);
-			} else if (msg.getMessageType() == Message.PAYLOAD_ACKS_MESSAGE) {
-				if(DEBUG_PRINT) System.out.println("DEBUG: Received payload with acks message, starting to process it...");
-				handlePayloadAcksMessage((AckMessage)msg);
-			} else {
-				System.out.println("ERROR: Received message with unknown type, continued...");
-				continue;
+
+				// All messages are stable
+				if(undeliveredMessagesAcks.isEmpty() && deliveredMessagesAcks.isEmpty() && becameEmpty) {
+					becameEmpty = false; // Only send FLUSH when sets become empty and not every time they're empty
+					sendFlush();
+				}
+
+				// Timeout = 1 => blocks as little as possible (1 ms)
+				msg = receiveMsg(1);
+				if(msg != null) {
+
+					if(msg instanceof PayloadMessage) {
+						//if(DEBUG_PRINT) System.out.println("DEBUG: Received payload message, starting to process it...");
+						try {
+							handlePayloadMessage((PayloadMessage)msg);
+						} catch (IOException e) {
+							System.out.println("ERROR: Failed to send ack (serialization or socket problem), continued...");
+						}
+					} else if (msg instanceof AckMessage) {
+						//if(DEBUG_PRINT) System.out.println("DEBUG: Received ack message, starting to process it...");
+						handleAckMessage((AckMessage)msg);
+					} else if(msg instanceof FlushMessage) {
+						handleFlushMessage((FlushMessage)msg);
+					} else if (msg instanceof PayloadAcksMessage) {
+						handlePayloadAcksMessage((AckMessage)msg);
+					} else {
+						System.out.println("ERROR: Received message with unknown type, continued...");
+						continue;
+					}
+
+				}
+
+			} else { // Normal operation
+
+				// timeout = 0 => blocks until message received
+				msg = receiveMsg(1);
+				if(msg == null) continue;
+
+				// Handle received msg
+				if(msg instanceof PayloadMessage) {
+					//if(DEBUG_PRINT) System.out.println("DEBUG: Received payload message, starting to process it...");
+					try {
+						handlePayloadMessage((PayloadMessage)msg);
+					} catch (IOException e) {
+						System.out.println("ERROR: Failed to send ack (serialization or socket problem), continued...");
+					}
+				} else if (msg instanceof AckMessage) {
+					//if(DEBUG_PRINT) System.out.println("DEBUG: Received ack message, starting to process it...");
+					handleAckMessage((AckMessage)msg);
+				} else if(msg instanceof FlushMessage) {
+					handleFlushMessage((FlushMessage)msg);
+				} else if (msg instanceof PayloadAcksMessage) {
+					//if(DEBUG_PRINT) System.out.println("DEBUG: Received payload with acks message, starting to process it...");
+					handlePayloadAcksMessage((AckMessage)msg);
+				} else {
+					System.out.println("ERROR: Received message with unknown type, continued...");
+					continue;
+				}
+
 			}
 
 		}
@@ -189,7 +228,7 @@ public class VSM extends Thread {
 		// TODO: Check about ack sender not being made!!!!
 		if(msg.getViewId() > currentView.getID()) {
 			for(MessageAcks acks: futureViewMessagesAcks) { 
-				if(acks.message.getSenderId() == msg.getAckSenderId() && acks.message.getSeqN() == msg.getAckSeqN()) {
+				if(acks.message.getSenderId() == msg.getAckSenderId() && ((PayloadMessage)acks.message).getSeqN() == msg.getAckSeqN()) {
 					acks.ackIds.add(msg.getSenderId());
 				}
 			}
@@ -198,11 +237,8 @@ public class VSM extends Thread {
 			if(DEBUG_PRINT) System.out.println("DEBUG: Received message that wasn't sent from a view member, discarded..");
 			return;
 		}
-		/* TODO: more checks needed
-		 * 		- what if the view id is > than current view?
-		 * 		- how to check for duplicates? 
-		 * 		- etc
-		 */
+		// TODO: more checks needed?
+
 
 		/* 
 		 * Searches for the message being acked and registers the ack
@@ -211,7 +247,7 @@ public class VSM extends Thread {
 
 		lock.lock();
 		for(MessageAcks acks :undeliveredMessagesAcks) {
-			if(acks.message.getSenderId() == msg.getAckSenderId() && acks.message.getSeqN() == msg.getAckSeqN()) {
+			if(acks.message.getSenderId() == msg.getAckSenderId() && ((PayloadMessage)acks.message).getSeqN() == msg.getAckSeqN()) {
 				acks.ackIds.add(msg.getSenderId());
 				return;
 			}
@@ -220,12 +256,16 @@ public class VSM extends Thread {
 
 		lock.lock();
 		for(MessageAcks acks :deliveredMessagesAcks) {
-			if(acks.message.getSenderId() == msg.getAckSenderId() && acks.message.getSeqN() == msg.getAckSeqN()) {
+			if(acks.message.getSenderId() == msg.getAckSenderId() && ((PayloadMessage)acks.message).getSeqN() == msg.getAckSeqN()) {
 				acks.ackIds.add(msg.getSenderId());
-				if(acks.ackIds.size() == currentView.getNodes().size()) {
+				if(acks.ackIds.equals(currentView.getNodes())) {
 					if(DEBUG_PRINT) System.out.println("DEBUG: message " + acks.getMessage() + " was transferred from delivered set to stable message set...");
-					stableMessages.add(acks.message);
+					stableMessages.add((PayloadMessage)acks.message);
 					deliveredMessagesAcks.remove(acks);
+					if(deliveredMessagesAcks.isEmpty() && undeliveredMessagesAcks.isEmpty()) {
+						if(DEBUG_PRINT) System.out.println("Both delivered and undelivered message sets became empty");
+						becameEmpty = true;
+					}
 				}
 				lock.unlock();
 				return;
@@ -235,8 +275,22 @@ public class VSM extends Thread {
 	}
 
 	private void handlePayloadAcksMessage(AckMessage msg) {
-		// TODO Auto-generated method stub
 
+
+	}
+
+	private void handleFlushMessage(FlushMessage msg) {
+		// Previous view
+		if(msg.getViewId() < currentView.getID()) {
+			if(DEBUG_PRINT) System.out.println("DEBUG: Received flush from previous view, discarded..");
+			return;
+		}
+		// Future view
+		// TODO: Check about ack sender not being made!!!!
+		if(msg.getViewId() > currentView.getID()) {
+			if(DEBUG_PRINT) System.out.println("DEBUG: Received flush from previous view, discarded..");
+			return;
+		}
 	}
 
 	/* **************************************
@@ -248,12 +302,11 @@ public class VSM extends Thread {
 	public void sendVSM(String payload) throws IOException {
 		// Build and send a datagram with serialized Payload Message
 
-		updateView();
-		while(changingView);
+		// Block until there is no new view to install
+		while(!viewQueue.isEmpty());
 
 		PayloadMessage message = new PayloadMessage(currentView.getID(), nodeId, seqNumber, payload);
 		seqNumber++;
-		byte[] bytes = messageToBytes(message);
 
 		lock.lock();
 		undeliveredMessagesAcks.add(new MessageAcks(message));
@@ -261,9 +314,9 @@ public class VSM extends Thread {
 		notEmpty.signal();
 		lock.unlock();
 
-		DatagramPacket packet = new DatagramPacket(bytes, bytes.length, UDPgroup, UDPport);
-		s.send(packet);
-		
+		sendMsg(message);
+
+		// Send ack for msg "message"
 		sendAck(message);
 	}
 
@@ -277,11 +330,11 @@ public class VSM extends Thread {
 				notEmpty.await();
 			}
 			MessageAcks msgAcks = undeliveredMessagesAcks.iterator().next();
-			payload = new String(msgAcks.getMessage().getPayload());
+			payload = new String(((PayloadMessage)msgAcks.getMessage()).getPayload());
 			undeliveredMessagesAcks.remove(msgAcks);
 			if(msgAcks.ackIds.size() == currentView.getNodes().size()) {
 				if(DEBUG_PRINT) System.out.println("DEBUG: message " + msgAcks.message + " was transferred from undelivered set to stable message set...");
-				stableMessages.add(msgAcks.message);
+				stableMessages.add((PayloadMessage)msgAcks.message);
 			} else {
 				if(DEBUG_PRINT) System.out.println("DEBUG: message " + msgAcks.message + " was transferred from undelivered set to delivered message set...");
 				deliveredMessagesAcks.add(msgAcks);
@@ -295,6 +348,11 @@ public class VSM extends Thread {
 		return payload;
 	}
 
+	// Method to be called by Group thread when it receives a new view from controller
+	public void addViewToQueue(View view) {
+		viewQueue.add(view);
+	}
+
 
 	/* ***************************************
 	 * 										*
@@ -302,19 +360,25 @@ public class VSM extends Thread {
 	 * 										*
 	 ****************************************/
 
-	private void updateView() {
-		//		View retrievedView = group.retrieveCurrentView();
-		//		if(currentView.equals(retrievedView)) return;
-		//		else {
-		//			changingView = true;
-		//			/* TODO: Change view!!!!!!!!!!!!
-		//			 * 
-		//			 * Notes:
-		//			 * 		- maybe reset seqN to zero
-		//			 */
-		//			
-		//			
-		//		}
+	// Remove acks from nodes that left in next views
+	private void updateUnstableMsgsAcks(View mostRecentNotInstalledView) {
+		lock.lock();
+		for(MessageAcks msgAcks:undeliveredMessagesAcks) {
+			msgAcks.ackIds.retainAll(mostRecentNotInstalledView.getNodes());
+		}
+		for(MessageAcks msgAcks:deliveredMessagesAcks) {
+			msgAcks.ackIds.retainAll(mostRecentNotInstalledView.getNodes());
+			if(msgAcks.ackIds.equals(mostRecentNotInstalledView.getNodes())) {
+				if(DEBUG_PRINT) System.out.println("DEBUG: message " + msgAcks.getMessage() + " was transferred from delivered set to stable message set - VIEW CHANGE");
+				stableMessages.add((PayloadMessage)msgAcks.message);
+				deliveredMessagesAcks.remove(msgAcks);
+				if(deliveredMessagesAcks.isEmpty() && undeliveredMessagesAcks.isEmpty()) {
+					if(DEBUG_PRINT) System.out.println("Both delivered and undelivered message sets became empty");
+					becameEmpty = true;
+				}
+			}
+		}
+		lock.unlock();
 	}
 
 	private byte[] messageToBytes(Message msg) throws IOException {
@@ -355,14 +419,101 @@ public class VSM extends Thread {
 		return message;
 	}
 
-	private void sendAck(PayloadMessage msg) throws IOException {
-		AckMessage ackMessage = new AckMessage(currentView.getID(), Message.ACK_MESSAGE, nodeId, msg.getSenderId(), msg.getSeqN());
-		byte[] bytes = messageToBytes(ackMessage);
+	private static <T> T getLastElement(final Iterable<T> elements) {
+		final Iterator<T> itr = elements.iterator();
+		T lastElement = itr.next();
 
-		DatagramPacket packet = new DatagramPacket(bytes, bytes.length, UDPgroup, UDPport);
-		s.send(packet);
-		if(DEBUG_PRINT) System.out.println("DEBUG: ack " + ackMessage + " sent");
+		while(itr.hasNext()) {
+			lastElement = itr.next();
+		}
+
+		return lastElement;
 	}
+
+	private void sendAck(PayloadMessage msg) throws IOException {
+		AckMessage ackMessage = new AckMessage(currentView.getID(), nodeId, msg.getSenderId(), msg.getSeqN());
+		sendMsg(ackMessage);
+	}
+
+	private void sendFlush() {
+		HashSet<Tuple<Integer, Integer>> stableMsgsIDs = new HashSet<Tuple<Integer, Integer>>();
+		lock.lock();
+		for(PayloadMessage msg: stableMessages) {
+			stableMsgsIDs.add(new Tuple<Integer, Integer>(msg.getSenderId(), msg.getSeqN()));
+		}
+		lock.unlock();
+		FlushMessage flush = new FlushMessage(currentView.getID() , nodeId, stableMsgsIDs);
+
+		sendMsg(flush);
+	}
+
+
+	// Timeout = 0 => blocks
+	private Message receiveMsg(int timeout) {
+		byte[] buffer = new byte[2048]; // TODO: Choose size for receiver buffer
+		DatagramPacket recv;
+		Message msg = null;
+		recv = new DatagramPacket(buffer, buffer.length);
+
+		try {
+			s.setSoTimeout(timeout);
+		} catch (SocketException e1) {
+			System.out.println("ERROR: Could not set MulticastSocket timeout");
+		}
+
+
+		try {
+			s.receive(recv);
+		} catch (SocketTimeoutException e) {
+			return msg;
+		} catch (IOException e1) {
+			System.out.println("ERROR: Failed to receive UDP datagram, continued...");
+			return null;
+		}
+
+		try {
+			msg = bytesToMessage(recv.getData());
+		} catch (ClassNotFoundException | IOException e) {
+			System.out.println("ERROR: Failed to deserialize byte array to a message object, continued...");
+			return null;
+		}
+
+		return msg;
+	}
+
+	private void sendMsg(Message msg) {
+		byte[] bytes = null;
+		try {
+			bytes = messageToBytes(msg);
+		} catch (IOException e) {
+			System.out.println("ERROR: Could not serialize message: " + msg);
+			System.exit(-1);
+		}
+		DatagramPacket packet = new DatagramPacket(bytes, bytes.length, UDPgroup, UDPport);
+		try {
+			s.send(packet);
+		} catch (IOException e) {
+			System.out.println("ERROR: Could not send message: " + msg);
+			System.exit(-1);
+		}
+		if(DEBUG_PRINT) {
+			if(msg instanceof PayloadMessage) {
+				System.out.println("DEBUG: payload message sent: " + (PayloadMessage)msg);
+			} else if (msg instanceof AckMessage) {
+				System.out.println("DEBUG: ack message sent: " + (AckMessage)msg);
+			} else if(msg instanceof FlushMessage) {
+				System.out.println("DEBUG: flush message sent: " + (FlushMessage)msg);
+			} else if (msg instanceof AckFlushMessage) {
+				System.out.println("DEBUG: ack flush message sent: " + (AckFlushMessage)msg);
+			} else if (msg instanceof PayloadAcksMessage) {
+				System.out.println("DEBUG: payload acks message sent: " + (PayloadAcksMessage)msg);
+			} else {
+				System.out.println("ERROR: Sent message of unknown type");
+			}
+		}
+	}
+
+
 
 
 	/* **************************************
@@ -373,18 +524,18 @@ public class VSM extends Thread {
 
 	@SuppressWarnings("unused")
 	private class MessageAcks implements Comparable<MessageAcks> {
-		public PayloadMessage message = null;
+		public Message message = null;
 		public HashSet<Integer> ackIds = new HashSet<Integer>(); // TODO: Check if it's better to remove ids instead of adding them 
 		public MessageAcks(PayloadMessage message) {
 			super();
 			this.message = message;
 		}
 
-		public PayloadMessage getMessage() {
+		public Message getMessage() {
 			return message;
 		}
 
-		public void setMessage(PayloadMessage message) {
+		public void setMessage(Message message) {
 			this.message = message;
 		}
 

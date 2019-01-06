@@ -11,7 +11,7 @@ public class PayloadMessage extends Message{
 	private String payload = null;
 
 	public PayloadMessage(int viewId, int senderId, int seqN, String payload) {
-		super(viewId, Message.PAYLOAD_MESSAGE, senderId);
+		super(viewId, senderId);
 		this.seqN = seqN;
 		this.payload = payload;
 	}

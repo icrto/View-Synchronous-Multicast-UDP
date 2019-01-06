@@ -10,8 +10,8 @@ public class AckMessage extends Message {
 	private int ackSenderId = -1;
 	private int ackSeqN = -1;
 	
-	public AckMessage(int viewId, int messageType, int senderId, int ackSenderId, int ackSeqN) {
-		super(viewId, messageType, senderId);
+	public AckMessage(int viewId, int senderId, int ackSenderId, int ackSeqN) {
+		super(viewId, senderId);
 		this.ackSenderId = ackSenderId;
 		this.ackSeqN = ackSeqN;
 	}

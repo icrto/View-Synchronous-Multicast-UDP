@@ -18,6 +18,7 @@ public class Main {
 		int ID = Integer.parseInt(args[0]);
 		String IPmulticast = args[1];
 		int port = Integer.parseInt(args[2]);
+		int timeout = 500; // TODO: change to parse from args[] (millis)
 		double dropRate = Double.parseDouble(args[3]);
 		double avgDelay = Double.parseDouble(args[4]);
 		double stdDelay = Double.parseDouble(args[5]);
@@ -33,17 +34,18 @@ public class Main {
 		}
 			
 		
-		VSM vsm = new VSM(ID, IPmulticast, port, dropRate, avgDelay, stdDelay);
+		VSM vsm = new VSM(ID, IPmulticast, port, timeout, dropRate, avgDelay, stdDelay);
 		vsm.start();
 
 		Receive rcv = new Receive(vsm);
 		
+		@SuppressWarnings("resource")
 		Scanner scanner = new Scanner(System.in);
 		 
 		 while(rcv.receiver.isAlive()) 
 		 {
 			 if(scanner.hasNext()) {
-					String read = scanner.next();
+					String read = scanner.nextLine();
 					//	System.out.println("Sending " + new String(hi.getData(), hi.getOffset(), hi.getLength()));
 					vsm.sendVSM(read);
 				}
