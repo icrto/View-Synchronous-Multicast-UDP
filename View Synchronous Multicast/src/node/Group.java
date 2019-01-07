@@ -36,13 +36,7 @@ public class Group {
 						while(true) {
 							try {
 								View newView = (View)input.readObject();
-								
-//								lock.lock();
-//								currentView = aux;
-//								System.out.println("RECEIVED: " + currentView.toString());
-//								notNull.signal();
-//								lock.unlock();
-								
+								System.out.println("RECEIVED: " + newView.toString());
 								vsm.addViewToQueue(newView);
 								
 							} catch (IOException e) {

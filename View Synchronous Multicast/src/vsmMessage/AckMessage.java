@@ -59,8 +59,8 @@ public class AckMessage extends Message {
 	
 	@Override
 	public String toString() {
-		return "PayloadMessage [viewID = " + super.getViewId() + " senderID=" 
-				+ super.getSenderId() + ", ackedMsgSeqN=" + ackSeqN + ", ackedMsgSenderID=" + ackSenderId + "]";
+		return "PayloadMessage [viewID= " + super.getViewId() + " senderID=" 
+				+ super.getSenderId() + " ackedMsgSeqN=" + ackSeqN + " ackedMsgSenderID=" + ackSenderId + "]";
 	}
 
 }

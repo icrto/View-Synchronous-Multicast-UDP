@@ -50,6 +50,10 @@ public class FlushMessage extends Message {
 			return false;
 		return true;
 	}
-	
-	
+
+	@Override
+	public String toString() {
+		return "FlushMessage [viewID= " + super.getViewId() + " senderID=" + super.getSenderId() + " stableMsgsIDs=" + stableMsgsIDs + "]";
+	}
+
 }

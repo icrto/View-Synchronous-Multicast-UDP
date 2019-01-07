@@ -39,7 +39,7 @@ public class VSM extends Thread {
 	private SortedSet<MessageAcks> futureViewMessagesAcks = new TreeSet<MessageAcks>();
 
 	private LinkedBlockingQueue<View> viewQueue = new LinkedBlockingQueue<View>();
-	
+
 	private HashSet<FlushMessage> receivedFlushes = new HashSet<FlushMessage>();
 
 	private Group group;
@@ -50,9 +50,17 @@ public class VSM extends Thread {
 	private int timeout;
 	private int seqNumber = 1;
 
-	private Boolean becameEmpty = true;
+	private boolean becameEmpty = true;
+	private boolean excluded = false;
 
-	public VSM(int iD, String UDPmulticastIp, int port, int timeout, double dropRate, double avgDelay, double stdDelay) {
+	private View mostRecentNotInstalledView = null;
+	private boolean unstableMsgsSent = false; // TODO: change to false when installed all new views
+
+	private long unstableMsgsSentTime = 0;
+
+
+
+	public VSM(int nNodes, int iD, String UDPmulticastIp, int port, int timeout, double dropRate, double avgDelay, double stdDelay) {
 
 		this.nodeId = iD;
 		UDPport = port;
@@ -67,12 +75,17 @@ public class VSM extends Thread {
 
 		group = new Group(this, nodeId);
 
-		currentView = new View(0);
+		currentView = new View(1);
+		for(int i = 1; i < nNodes + 1; i++) {
+			this.currentView.getNodes().add(i);
+		}
 
-//		if(currentView.getID() != 1) {
-//			System.out.println("ERROR: first retrieved view is not view 1");
-//			System.exit(1);
-//		}
+		System.out.println(currentView.toString());
+
+		//		if(currentView.getID() != 1) {
+		//			System.out.println("ERROR: first retrieved view is not view 1");
+		//			System.exit(1);
+		//		}
 
 		System.out.println("This node has ID " + nodeId);
 	}
@@ -90,28 +103,44 @@ public class VSM extends Thread {
 
 		Message msg = null;
 
-		View mostRecentNotInstalledView = null;
-		Boolean unstableMsgsSent = false; // TODO: change to false when installed all new views
 
-		long unstableMsgsSentTime = 0;
+
 
 		while(true) {
 
-			// If the queue isn't empty then view change algorithm is run
-			if(!viewQueue.isEmpty()) {
+			if(excluded) {
+				continue;
+				// TODO: ver se é preciso fazer alguma coisa para fazer join
+			} else if(!viewQueue.isEmpty()) { // If the queue isn't empty then view change algorithm is run
 
 				mostRecentNotInstalledView = getLastElement(viewQueue); // TODO: don't do this every time
-
-				if(!unstableMsgsSent) {
-					updateUnstableMsgsAcks(mostRecentNotInstalledView);
-					// TODO: sendUnstableMsgs();
-					unstableMsgsSentTime = System.currentTimeMillis();
-					unstableMsgsSent = true; 
-				} 
-
-				if(unstableMsgsSent && unstableMsgsSentTime + timeout <= System.currentTimeMillis()) {
-					// TODO: suspect de quem não recebeu ack
+				if(!mostRecentNotInstalledView.getNodes().contains(nodeId)) {
+					if(DEBUG_PRINT) System.out.println("DEBUG: Node got excluded");
+					excludeNode(); 
+					continue;
 				}
+				
+				View intersectionView = new View(-1);
+				
+				HashSet<Integer> intersectionNodeIds = new HashSet<Integer>(currentView.getNodes());
+				intersectionNodeIds.retainAll(mostRecentNotInstalledView.getNodes());
+				
+				if(DEBUG_PRINT) System.out.println("DEBUG: Intersected view: " + intersectionView);
+				
+				intersectionView.setNodes(intersectionNodeIds);
+				
+				
+
+				//				if(!unstableMsgsSent) {
+				//					updateUnstableMsgsAcks(mostRecentNotInstalledView);
+				//					// TODO: sendUnstableMsgs();
+				//					unstableMsgsSentTime = System.currentTimeMillis();
+				//					unstableMsgsSent = true; 
+				//				} 
+				//
+				//				if(unstableMsgsSent && unstableMsgsSentTime + timeout <= System.currentTimeMillis()) {
+				//					// TODO: suspect de quem não recebeu ack
+				//				}
 
 				// All messages are stable
 				if(undeliveredMessagesAcks.isEmpty() && deliveredMessagesAcks.isEmpty() && becameEmpty) {
@@ -133,8 +162,8 @@ public class VSM extends Thread {
 					} else if (msg instanceof AckMessage) {
 						//if(DEBUG_PRINT) System.out.println("DEBUG: Received ack message, starting to process it...");
 						handleAckMessage((AckMessage)msg);
-					} else if(msg instanceof FlushMessage) {
-						handleFlushMessage((FlushMessage)msg);
+					} else if(msg instanceof FlushMessage) { 
+						handleFlushMessage((FlushMessage)msg, intersectionView);
 					} else if (msg instanceof PayloadAcksMessage) {
 						handlePayloadAcksMessage((AckMessage)msg);
 					} else {
@@ -162,7 +191,7 @@ public class VSM extends Thread {
 					//if(DEBUG_PRINT) System.out.println("DEBUG: Received ack message, starting to process it...");
 					handleAckMessage((AckMessage)msg);
 				} else if(msg instanceof FlushMessage) {
-					handleFlushMessage((FlushMessage)msg);
+					//handleFlushMessage((FlushMessage)msg); // TODO: Check this!
 				} else if (msg instanceof PayloadAcksMessage) {
 					//if(DEBUG_PRINT) System.out.println("DEBUG: Received payload with acks message, starting to process it...");
 					handlePayloadAcksMessage((AckMessage)msg);
@@ -248,6 +277,7 @@ public class VSM extends Thread {
 		for(MessageAcks acks :undeliveredMessagesAcks) {
 			if(acks.message.getSenderId() == msg.getAckSenderId() && ((PayloadMessage)acks.message).getSeqN() == msg.getAckSeqN()) {
 				acks.ackIds.add(msg.getSenderId());
+				lock.unlock();
 				return;
 			}
 		}
@@ -262,7 +292,7 @@ public class VSM extends Thread {
 					stableMessages.add((PayloadMessage)acks.message);
 					deliveredMessagesAcks.remove(acks);
 					if(deliveredMessagesAcks.isEmpty() && undeliveredMessagesAcks.isEmpty()) {
-						if(DEBUG_PRINT) System.out.println("Both delivered and undelivered message sets became empty");
+						if(DEBUG_PRINT) System.out.println("DEBUG: Both delivered and undelivered message sets became empty");
 						becameEmpty = true;
 					}
 				}
@@ -278,7 +308,10 @@ public class VSM extends Thread {
 
 	}
 
-	private void handleFlushMessage(FlushMessage msg) {
+	private void handleFlushMessage(FlushMessage msg, View intersectionView) {
+
+		if(DEBUG_PRINT) System.out.println("Received flush: " + msg);
+
 		// Previous view
 		if(msg.getViewId() < currentView.getID()) {
 			if(DEBUG_PRINT) System.out.println("DEBUG: Received flush from previous view, discarded..");
@@ -286,7 +319,12 @@ public class VSM extends Thread {
 		}
 		// Future view
 		if(msg.getViewId() > currentView.getID()) {
-			if(DEBUG_PRINT) System.out.println("DEBUG: Received flush from previous view, discarded..");
+			if(DEBUG_PRINT) System.out.println("DEBUG: Received flush from future view, discarded..");
+			return;
+		}
+		
+		if(!intersectionView.getNodes().contains(msg.getViewId())) {
+			if(DEBUG_PRINT) System.out.println("DEBUG: Received flush from node that doesn't belong to intersection, discarded..");
 			return;
 		}
 		/*
@@ -295,19 +333,29 @@ public class VSM extends Thread {
 
 		lock.lock();
 		if(undeliveredMessagesAcks.isEmpty() && deliveredMessagesAcks.isEmpty()) {
+			System.out.println("entrou no if linha 302");
 			lock.unlock();
 			HashSet<Tuple<Integer, Integer>> flushStableMsgsIDs = msg.getStableMsgsIDs();
 			HashSet<Tuple<Integer, Integer>> stableMsgsIDs = createTupleSet(stableMessages);
-			
+
 			// Flush valid if node that flushed had the same stable messages
 			if(flushStableMsgsIDs.equals(stableMsgsIDs)) {
+
 				receivedFlushes.add(msg);
-				if(receivedFlushes.size() == currentView.getNodes().size()) {
-					receivedFlushes = new HashSet<FlushMessage>(); // Delete all received flushes
+				if(receivedFlushes.size() == intersectionView.getNodes().size()) { 
+					System.out.println("Entrou na verificação de ter todos os flushes");
 					
+					
+
 					// New view installed
 					currentView = viewQueue.element();
 					viewQueue.remove(currentView);
+					receivedFlushes = new HashSet<FlushMessage>(); // Delete all received flushes
+					seqNumber = 1;
+					stableMessages = new HashSet<PayloadMessage>();
+					mostRecentNotInstalledView = null;
+					becameEmpty = true;
+					if(DEBUG_PRINT) System.out.println("DEBUG: Installed view: " + currentView);
 				}
 			} else {
 				return;
@@ -464,7 +512,7 @@ public class VSM extends Thread {
 		FlushMessage flush = new FlushMessage(currentView.getID() , nodeId,  createTupleSet(stableMessages));
 		sendMsg(flush);
 	}
-	
+
 	private HashSet<Tuple<Integer, Integer>> createTupleSet(HashSet<PayloadMessage> msgs) {
 		HashSet<Tuple<Integer, Integer>> stableMsgsIDs = new HashSet<Tuple<Integer, Integer>>();
 		lock.lock();
@@ -540,6 +588,32 @@ public class VSM extends Thread {
 	}
 
 
+	private void excludeNode() {
+
+		// TODO: int nodeId;
+
+		undeliveredMessagesAcks = new HashSet<MessageAcks>();
+		deliveredMessagesAcks = new HashSet<MessageAcks>(); // Delivered but unstable
+		stableMessages = new HashSet<PayloadMessage>();
+		futureViewMessagesAcks = new TreeSet<MessageAcks>();
+
+		viewQueue = new LinkedBlockingQueue<View>();
+
+		receivedFlushes = new HashSet<FlushMessage>();
+
+		seqNumber = 1;
+
+		becameEmpty = true;
+		excluded = true;
+
+		mostRecentNotInstalledView = null;
+		unstableMsgsSent = false; 
+
+		unstableMsgsSentTime = 0;
+
+		// TODO: excluded tem de voltar a false quando nó reentra
+
+	}
 
 
 	/* **************************************
