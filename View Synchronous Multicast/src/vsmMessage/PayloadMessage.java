@@ -11,7 +11,7 @@ public class PayloadMessage extends Message{
 	private String payload = null;
 
 	public PayloadMessage(int viewId, int senderId, int seqN, String payload) {
-		super(viewId, Message.PAYLOAD_MESSAGE, senderId);
+		super(viewId, senderId);
 		this.seqN = seqN;
 		this.payload = payload;
 	}
@@ -59,5 +59,12 @@ public class PayloadMessage extends Message{
 			return false;
 		return true;
 	}
+
+	@Override
+	public String toString() {
+		return "PayloadMessage [viewID=" + super.getViewId() + " senderID=" + super.getSenderId() + " seqN=" + seqN + "]";
+	}
+	
+	
 
 }

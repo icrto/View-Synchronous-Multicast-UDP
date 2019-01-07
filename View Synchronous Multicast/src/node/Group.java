@@ -13,7 +13,6 @@ import view.View;
 
 public class Group {
 	private View currentView = null;
-	private View aux = null;
 	private int nodeID;
 	private int basePort = 60000;
 	private ServerSocket welcomeSocket = null;
@@ -22,8 +21,10 @@ public class Group {
 	private DataOutputStream output = null;
 	private final Lock lock = new ReentrantLock();
 	private final Condition notNull = lock.newCondition();
-	public Group(int ID) {
+	private VSM vsm; // TODO: check if it's possible to remove this
+	public Group(VSM vsm, int ID) {
 		this.nodeID = ID;
+		this.vsm = vsm;
 
 		Thread t1 = new Thread(new Runnable() {
 			@Override
@@ -36,12 +37,10 @@ public class Group {
 						input = new ObjectInputStream(connectionSocket.getInputStream());
 						while(true) {
 							try {
-								aux = (View)input.readObject();
-								lock.lock();
-								currentView = aux;
-								System.out.println("RECEIVED: " + currentView.toString());
-								notNull.signal();
-								lock.unlock();
+								View newView = (View)input.readObject();
+								System.out.println("RECEIVED: " + newView.toString());
+								vsm.addViewToQueue(newView);
+								
 							} catch (IOException e) {
 								System.err.println("Connection Failed");
 								System.exit(-1);

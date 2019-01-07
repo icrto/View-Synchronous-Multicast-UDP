@@ -48,5 +48,10 @@ public class PayloadAcksMessage extends PayloadMessage {
 			return false;
 		return true;
 	}
-	
+
+	@Override
+	public String toString() {
+		return "PayloadAcksMessage [viewID=" + super.getViewId() + " originalSenderID=" + super.getSenderId() + " originalSeqN=" + super.getSeqN() + " ackIds=" + ackIds + "]";
+	}
+
 }
