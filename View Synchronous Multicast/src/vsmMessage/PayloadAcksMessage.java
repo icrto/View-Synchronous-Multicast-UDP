@@ -51,7 +51,7 @@ public class PayloadAcksMessage extends PayloadMessage {
 
 	@Override
 	public String toString() {
-		return "PayloadAcksMessage [viewID= " + super.getViewId() + " originalSenderID=" + super.getSenderId() + " originalSeqN=" + super.getSeqN() + " ackIds=" + ackIds + "]";
+		return "PayloadAcksMessage [viewID=" + super.getViewId() + " originalSenderID=" + super.getSenderId() + " originalSeqN=" + super.getSeqN() + " ackIds=" + ackIds + "]";
 	}
 
 }

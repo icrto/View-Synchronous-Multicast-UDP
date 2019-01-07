@@ -62,7 +62,7 @@ public class PayloadMessage extends Message{
 
 	@Override
 	public String toString() {
-		return "PayloadMessage [viewID= " + super.getViewId() + " senderID=" + super.getSenderId() + " seqN=" + seqN + "]";
+		return "PayloadMessage [viewID=" + super.getViewId() + " senderID=" + super.getSenderId() + " seqN=" + seqN + "]";
 	}
 	
 	

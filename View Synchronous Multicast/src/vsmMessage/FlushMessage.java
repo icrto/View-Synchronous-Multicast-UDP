@@ -53,7 +53,7 @@ public class FlushMessage extends Message {
 
 	@Override
 	public String toString() {
-		return "FlushMessage [viewID= " + super.getViewId() + " senderID=" + super.getSenderId() + " stableMsgsIDs=" + stableMsgsIDs + "]";
+		return "FlushMessage [viewID=" + super.getViewId() + " senderID=" + super.getSenderId() + " stableMsgsIDs=" + stableMsgsIDs + "]";
 	}
 
 }
