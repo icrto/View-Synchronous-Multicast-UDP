@@ -114,22 +114,23 @@ public class VSM extends Thread {
 			} else if(!viewQueue.isEmpty()) { // If the queue isn't empty then view change algorithm is run
 
 				mostRecentNotInstalledView = getLastElement(viewQueue); // TODO: don't do this every time
+
 				if(!mostRecentNotInstalledView.getNodes().contains(nodeId)) {
 					if(DEBUG_PRINT) System.out.println("DEBUG: Node got excluded");
 					excludeNode(); 
 					continue;
 				}
-				
+
 				View intersectionView = new View(-1);
-				
+
 				HashSet<Integer> intersectionNodeIds = new HashSet<Integer>(currentView.getNodes());
 				intersectionNodeIds.retainAll(mostRecentNotInstalledView.getNodes());
-				
-				if(DEBUG_PRINT) System.out.println("DEBUG: Intersected view: " + intersectionView);
-				
+
+
 				intersectionView.setNodes(intersectionNodeIds);
-				
-				
+
+
+
 
 				//				if(!unstableMsgsSent) {
 				//					updateUnstableMsgsAcks(mostRecentNotInstalledView);
@@ -206,6 +207,8 @@ public class VSM extends Thread {
 	}
 
 	private void handlePayloadMessage(PayloadMessage msg) throws IOException {
+		if(DEBUG_PRINT) System.out.println("DEBUG: Received payload message " + msg); 
+
 		MessageAcks msgAcks = new MessageAcks(msg);
 		// Previous view
 		if(msg.getViewId() < currentView.getID()) {
@@ -322,40 +325,31 @@ public class VSM extends Thread {
 			if(DEBUG_PRINT) System.out.println("DEBUG: Received flush from future view, discarded..");
 			return;
 		}
-		
-		if(!intersectionView.getNodes().contains(msg.getViewId())) {
+
+		if(!intersectionView.getNodes().contains(msg.getSenderId())) {
 			if(DEBUG_PRINT) System.out.println("DEBUG: Received flush from node that doesn't belong to intersection, discarded..");
 			return;
 		}
 		/*
 		 * TODO: check if more verifications are needed
+		 * maybe check for duplicate flushes? is it really needed? or each node only sends one flush?
 		 */
 
 		lock.lock();
 		if(undeliveredMessagesAcks.isEmpty() && deliveredMessagesAcks.isEmpty()) {
-			System.out.println("entrou no if linha 302");
 			lock.unlock();
 			HashSet<Tuple<Integer, Integer>> flushStableMsgsIDs = msg.getStableMsgsIDs();
 			HashSet<Tuple<Integer, Integer>> stableMsgsIDs = createTupleSet(stableMessages);
+
 
 			// Flush valid if node that flushed had the same stable messages
 			if(flushStableMsgsIDs.equals(stableMsgsIDs)) {
 
 				receivedFlushes.add(msg);
-				if(receivedFlushes.size() == intersectionView.getNodes().size()) { 
-					System.out.println("Entrou na verificação de ter todos os flushes");
-					
-					
+				System.out.println("received flushes fifo updated" + receivedFlushes);
 
-					// New view installed
-					currentView = viewQueue.element();
-					viewQueue.remove(currentView);
-					receivedFlushes = new HashSet<FlushMessage>(); // Delete all received flushes
-					seqNumber = 1;
-					stableMessages = new HashSet<PayloadMessage>();
-					mostRecentNotInstalledView = null;
-					becameEmpty = true;
-					if(DEBUG_PRINT) System.out.println("DEBUG: Installed view: " + currentView);
+				if(receivedFlushes.size() == intersectionView.getNodes().size()) { 
+					installNewView();
 				}
 			} else {
 				return;
@@ -375,6 +369,12 @@ public class VSM extends Thread {
 	public void sendVSM(String payload) throws IOException {
 		// Build and send a datagram with serialized Payload Message
 
+		/*TODO: if node is excluded warn the user that it is excluded 
+		 * node can still send messages (check if it makes sense) and they are discarded by other nodes (this is working, Isabel checked it)
+		 * but excluded node still receives and delivers its own message --> THIS NEEDS TO BE CORRECTED
+		 */
+		
+		
 		// Block until there is no new view to install
 		while(!viewQueue.isEmpty());
 
@@ -587,7 +587,16 @@ public class VSM extends Thread {
 		}
 	}
 
-
+	private void installNewView() {
+		currentView = viewQueue.element();
+		viewQueue.remove(currentView);
+		receivedFlushes = new HashSet<FlushMessage>(); // Delete all received flushes
+		seqNumber = 1;
+		stableMessages = new HashSet<PayloadMessage>();
+		mostRecentNotInstalledView = null;
+		becameEmpty = true;
+		if(DEBUG_PRINT) System.out.println("DEBUG: Installed view: " + currentView);
+	}
 	private void excludeNode() {
 
 		// TODO: int nodeId;
