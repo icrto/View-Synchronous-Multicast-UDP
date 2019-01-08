@@ -126,6 +126,7 @@ public class VSM extends Thread {
 				View intersectionView = new View(-1);
 				HashSet<Integer> intersectionNodeIds = new HashSet<Integer>(currentView.getNodes());
 				intersectionNodeIds.retainAll(mostRecentNotInstalledView.getNodes());
+
 				intersectionView.setNodes(intersectionNodeIds);
 
 
@@ -193,6 +194,9 @@ public class VSM extends Thread {
 
 		}
 	}
+	
+	
+	//Verficar aqui os duplicados
 
 	private void handlePayloadMessage(PayloadMessage msg) {
 		if(DEBUG_PRINT) System.out.println("DEBUG: Received payload message " + msg); 
@@ -647,6 +651,16 @@ public class VSM extends Thread {
 		stableMessages = new HashSet<PayloadMessage>();
 		mostRecentNotInstalledView = null;
 		becameEmpty = true;
+		
+		MessageAcks futureMsg =  futureViewMessagesAcks.first();
+		
+		while(futureMsg.getMessage().getViewId() == currentView.getID()) {
+			undeliveredMessagesAcks.add(futureMsg);
+			futureViewMessagesAcks.remove(futureMsg);
+			futureMsg = futureViewMessagesAcks.first();
+		}
+		
+		
 		if(DEBUG_PRINT) System.out.println("DEBUG: Installed view: " + currentView);
 	}
 	private void excludeNode() {
@@ -682,6 +696,7 @@ public class VSM extends Thread {
 	 * 			Auxiliary Classes			*
 	 * 										*
 	 ****************************************/
+
 
 	@SuppressWarnings("unused")
 	private class MessageAcks implements Comparable<MessageAcks> {
