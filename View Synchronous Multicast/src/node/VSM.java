@@ -126,7 +126,6 @@ public class VSM extends Thread {
 				HashSet<Integer> intersectionNodeIds = new HashSet<Integer>(currentView.getNodes());
 				intersectionNodeIds.retainAll(mostRecentNotInstalledView.getNodes());
 
-
 				intersectionView.setNodes(intersectionNodeIds);
 
 
@@ -598,6 +597,16 @@ public class VSM extends Thread {
 		stableMessages = new HashSet<PayloadMessage>();
 		mostRecentNotInstalledView = null;
 		becameEmpty = true;
+		
+		MessageAcks futureMsg =  futureViewMessagesAcks.first();
+		
+		while(futureMsg.getMessage().getViewId() == currentView.getID()) {
+			undeliveredMessagesAcks.add(futureMsg);
+			futureViewMessagesAcks.remove(futureMsg);
+			futureMsg = futureViewMessagesAcks.first();
+		}
+		
+		
 		if(DEBUG_PRINT) System.out.println("DEBUG: Installed view: " + currentView);
 	}
 	private void excludeNode() {
