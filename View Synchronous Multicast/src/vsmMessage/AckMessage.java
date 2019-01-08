@@ -10,8 +10,8 @@ public class AckMessage extends Message {
 	private int ackSenderId = -1;
 	private int ackSeqN = -1;
 	
-	public AckMessage(int viewId, int messageType, int senderId, int ackSenderId, int ackSeqN) {
-		super(viewId, messageType, senderId);
+	public AckMessage(int viewId, int senderId, int ackSenderId, int ackSeqN) {
+		super(viewId, senderId);
 		this.ackSenderId = ackSenderId;
 		this.ackSeqN = ackSeqN;
 	}
@@ -55,6 +55,12 @@ public class AckMessage extends Message {
 		if (ackSeqN != other.ackSeqN)
 			return false;
 		return true;
+	}
+	
+	@Override
+	public String toString() {
+		return "AckMessage [viewID=" + super.getViewId() + " senderID=" 
+				+ super.getSenderId() + " ackedMsgSeqN=" + ackSeqN + " ackedMsgSenderID=" + ackSenderId + "]";
 	}
 
 }
