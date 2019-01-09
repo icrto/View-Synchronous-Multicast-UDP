@@ -597,16 +597,17 @@ public class VSM extends Thread {
 		stableMessages = new HashSet<PayloadMessage>();
 		mostRecentNotInstalledView = null;
 		becameEmpty = true;
-		
-		MessageAcks futureMsg =  futureViewMessagesAcks.first();
-		
-		while(futureMsg.getMessage().getViewId() == currentView.getID()) {
-			undeliveredMessagesAcks.add(futureMsg);
-			futureViewMessagesAcks.remove(futureMsg);
-			futureMsg = futureViewMessagesAcks.first();
+	
+		if(futureViewMessagesAcks != null) {
+			MessageAcks futureMsg =  futureViewMessagesAcks.first();
+			while(futureMsg.getMessage().getViewId() == currentView.getID()) {
+				undeliveredMessagesAcks.add(futureMsg);
+				futureViewMessagesAcks.remove(futureMsg);
+				futureMsg = futureViewMessagesAcks.first();
+				if(futureMsg == null) break;
+			}
 		}
-		
-		
+
 		if(DEBUG_PRINT) System.out.println("DEBUG: Installed view: " + currentView);
 	}
 	private void excludeNode() {
