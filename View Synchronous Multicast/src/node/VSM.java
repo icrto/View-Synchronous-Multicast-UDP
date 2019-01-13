@@ -98,13 +98,9 @@ public class VSM extends Thread {
 
 	@Override
 	public void run() {
+
 		System.out.println("Receiver thread starting...");
 		// Receiver thread code goes here
-
-		Message msg = null;
-
-
-
 
 		while(true) {
 
@@ -113,82 +109,11 @@ public class VSM extends Thread {
 				// TODO: ver se é preciso fazer alguma coisa para fazer join
 			} else if(!viewQueue.isEmpty()) { // If the queue isn't empty then view change algorithm is run
 
-				mostRecentNotInstalledView = getLastElement(viewQueue); // TODO: don't do this every time
-
-				// Discover if got excluded 
-				if(!mostRecentNotInstalledView.getNodes().contains(nodeId)) {
-					if(DEBUG_PRINT) System.out.println("DEBUG: Node got excluded");
-					excludeNode(); 
-					continue;
-				}
-
-				// Compose the intersection between current view and latest view to install
-				View intersectionView = new View(-1);
-				HashSet<Integer> intersectionNodeIds = new HashSet<Integer>(currentView.getNodes());
-				intersectionNodeIds.retainAll(mostRecentNotInstalledView.getNodes());
-
-				intersectionView.setNodes(intersectionNodeIds);
-
-
-				if(!unstableMsgsSent) {
-					updateUnstableMsgsAcks(mostRecentNotInstalledView);
-					sendUnstableMsgs(intersectionView);
-					unstableMsgsSentTime = System.currentTimeMillis();
-					unstableMsgsSent = true; 
-				} 
-
-				if(unstableMsgsSent && unstableMsgsSentTime + timeout <= System.currentTimeMillis()) {
-					// TODO: suspect de quem não recebeu ack
-				}
-
-
-				// All messages are stable
-				if(undeliveredMessagesAcks.isEmpty() && deliveredMessagesAcks.isEmpty() && becameEmpty) {
-					becameEmpty = false; // Only send FLUSH when sets become empty and not every time they're empty
-					sendFlush();
-				}
-
-				// Timeout = 1 => blocks as little as possible (1 ms)
-				msg = receiveMsg(1);
-				if(msg != null) {
-					if(msg instanceof PayloadMessage) {
-						//if(DEBUG_PRINT) System.out.println("DEBUG: Received payload message, starting to process it...");
-						handlePayloadMessage((PayloadMessage)msg);
-					} else if (msg instanceof AckMessage) {
-						//if(DEBUG_PRINT) System.out.println("DEBUG: Received ack message, starting to process it...");
-						handleAckMessage((AckMessage)msg);
-					} else if(msg instanceof FlushMessage) { 
-						handleFlushMessage((FlushMessage)msg, intersectionView);
-					} else if (msg instanceof PayloadAcksMessage) {
-						handlePayloadAcksMessage((PayloadAcksMessage)msg);
-					} else {
-						System.out.println("ERROR: Received message with unknown type, continued...");
-						continue;
-					}
-				}
+				changeViewProcess();
 
 			} else { // Normal operation
 
-				// timeout = 0 => blocks until message received
-				msg = receiveMsg(1);
-				if(msg == null) continue;
-
-				// Handle received msg
-				if(msg instanceof PayloadMessage) {
-					//if(DEBUG_PRINT) System.out.println("DEBUG: Received payload message, starting to process it...");
-					handlePayloadMessage((PayloadMessage)msg);
-				} else if (msg instanceof AckMessage) {
-					//if(DEBUG_PRINT) System.out.println("DEBUG: Received ack message, starting to process it...");
-					handleAckMessage((AckMessage)msg);
-				} else if(msg instanceof FlushMessage) {
-					//handleFlushMessage((FlushMessage)msg); // TODO: Check this!
-				} else if (msg instanceof PayloadAcksMessage) {
-					//if(DEBUG_PRINT) System.out.println("DEBUG: Received payload with acks message, starting to process it...");
-					handlePayloadAcksMessage((PayloadAcksMessage)msg);
-				} else {
-					System.out.println("ERROR: Received message with unknown type, continued...");
-					continue;
-				}
+				arrivalMessages(1, null);
 
 			}
 
@@ -196,6 +121,80 @@ public class VSM extends Thread {
 	}
 	
 	
+	
+	private void changeViewProcess() {
+		
+		mostRecentNotInstalledView = getLastElement(viewQueue); // TODO: don't do this every time
+
+		// Discover if got excluded 
+		if(!mostRecentNotInstalledView.getNodes().contains(nodeId)) {
+			if(DEBUG_PRINT) System.out.println("DEBUG: Node got excluded");
+			excludeNode(); 
+			return;
+		}
+
+		// Compose the intersection between current view and latest view to install
+		View intersectionView = new View(-1);
+		HashSet<Integer> intersectionNodeIds = new HashSet<Integer>(currentView.getNodes());
+		intersectionNodeIds.retainAll(mostRecentNotInstalledView.getNodes());
+
+		intersectionView.setNodes(intersectionNodeIds);
+
+
+		if(!unstableMsgsSent) {
+			updateUnstableMsgsAcks(mostRecentNotInstalledView);
+			sendUnstableMsgs(intersectionView);
+			unstableMsgsSentTime = System.currentTimeMillis();
+			unstableMsgsSent = true; 
+		} 
+
+		if(unstableMsgsSent && unstableMsgsSentTime + timeout <= System.currentTimeMillis()) {
+			// TODO: suspect de quem não recebeu ack
+		}
+
+
+		// All messages are stable
+		if(undeliveredMessagesAcks.isEmpty() && deliveredMessagesAcks.isEmpty() && becameEmpty) {
+			becameEmpty = false; // Only send FLUSH when sets become empty and not every time they're empty
+			sendFlush();
+		}
+
+		// Timeout = 1 => blocks as little as possible (1 ms)
+		arrivalMessages(0, intersectionView);
+		
+		return;
+		
+	}
+
+	private void arrivalMessages(int state, View  intersectionView) {   //state:   0-> mudança de vista   1-> funcionamento normal
+		
+		Message msg = null;
+		// timeout = 0 => blocks until message received
+		msg = receiveMsg(1);
+		if(msg == null) return;
+
+		// Handle received msg
+		if(msg instanceof PayloadMessage) {
+			//if(DEBUG_PRINT) System.out.println("DEBUG: Received payload message, starting to process it...");
+			handlePayloadMessage((PayloadMessage)msg);
+		} else if (msg instanceof AckMessage) {
+			//if(DEBUG_PRINT) System.out.println("DEBUG: Received ack message, starting to process it...");
+			handleAckMessage((AckMessage)msg);
+		} else if((msg instanceof FlushMessage) && (intersectionView!=null)) {
+			if(DEBUG_PRINT) System.out.println("DEBUG: Received Fush Message...");
+			handleFlushMessage((FlushMessage)msg, intersectionView); // TODO: Check this!
+		} else if (msg instanceof PayloadAcksMessage) {
+			//if(DEBUG_PRINT) System.out.println("DEBUG: Received payload with acks message, starting to process it...");
+			handlePayloadAcksMessage((PayloadAcksMessage)msg);
+		} else {
+			System.out.println("ERROR: Received message with unknown type, continued...");
+			return;
+		}
+		
+		return;
+		
+	}
+
 	//Verficar aqui os duplicados
 
 	private void handlePayloadMessage(PayloadMessage msg) {
@@ -652,18 +651,24 @@ public class VSM extends Thread {
 		mostRecentNotInstalledView = null;
 		becameEmpty = true;
 	
-//		if(futureViewMessagesAcks != null) {
-//			MessageAcks futureMsg =  futureViewMessagesAcks.first();
-//			while(futureMsg.getMessage().getViewId() == currentView.getID()) {
-//				undeliveredMessagesAcks.add(futureMsg);
-//				futureViewMessagesAcks.remove(futureMsg);
-//				futureMsg = futureViewMessagesAcks.first();
-//				if(futureMsg == null) break;
-//			}
-//		}
+		if(!futureViewMessagesAcks.isEmpty()) {
+			MessageAcks futureMsg =  futureViewMessagesAcks.first();
+			while(futureMsg.getMessage().getViewId() == currentView.getID()) {
+				undeliveredMessagesAcks.add(futureMsg);
+				futureViewMessagesAcks.remove(futureMsg);
+				if(!futureViewMessagesAcks.isEmpty()) {
+					futureMsg = futureViewMessagesAcks.first();
+				}else {
+					break;
+				}
+			}
+
+		}
 
 		if(DEBUG_PRINT) System.out.println("DEBUG: Installed view: " + currentView);
 	}
+	
+	
 	private void excludeNode() {
 
 		// TODO: int nodeId;
