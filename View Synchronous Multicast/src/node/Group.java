@@ -5,22 +5,16 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.concurrent.locks.Condition;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 
-import view.View;
+import membershipService.View;
 
 public class Group {
-	private View currentView = null;
 	private int nodeID;
 	private int basePort = 60000;
 	private ServerSocket welcomeSocket = null;
 	private Socket connectionSocket;
 	private ObjectInputStream input = null;
 	private DataOutputStream output = null;
-	private final Lock lock = new ReentrantLock();
-	private final Condition notNull = lock.newCondition();
 	private VSM vsm; // TODO: check if it's possible to remove this
 	public Group(VSM vsm, int ID) {
 		this.nodeID = ID;
@@ -60,20 +54,6 @@ public class Group {
 			}
 		});  
 		t1.start();
-	}
-
-	public View retrieveCurrentView() { //VSM calls this method to get the most recent view before sending a message
-		lock.lock();
-		try {
-			while(currentView == null) {
-				notNull.await();
-			}
-		} catch (InterruptedException e) {
-			e.printStackTrace();
-		}finally{
-			lock.unlock();
-		}
-		return currentView;
 	}
 
 
