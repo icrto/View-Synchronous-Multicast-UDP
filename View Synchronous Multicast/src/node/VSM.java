@@ -15,8 +15,8 @@ import java.util.*;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.locks.*;
 
+import membershipService.View;
 import networkEmulation.NetworkEmulationMulticastSocket;
-import view.View;
 import util.*;
 import vsmMessage.AckMessage;
 import vsmMessage.FlushMessage;
