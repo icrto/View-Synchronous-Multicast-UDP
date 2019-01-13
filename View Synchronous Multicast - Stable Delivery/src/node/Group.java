@@ -48,7 +48,7 @@ public class Group {
 						System.exit(-1);
 					}
 				} catch (IOException e3) {
-					System.err.println("Could Not Listen on Port: " + (basePort + nodeID));
+					//System.err.println("Could Not Listen on Port: " + (basePort + nodeID));
 					System.exit(-1);
 				}	    
 			}
