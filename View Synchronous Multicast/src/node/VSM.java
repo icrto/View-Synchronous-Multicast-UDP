@@ -15,7 +15,7 @@ import java.util.*;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.locks.*;
 
-import membershipService.View;
+import view.View;
 import networkEmulation.NetworkEmulationMulticastSocket;
 import util.*;
 import vsmMessage.AckMessage;
@@ -652,15 +652,15 @@ public class VSM extends Thread {
 		mostRecentNotInstalledView = null;
 		becameEmpty = true;
 	
-		if(futureViewMessagesAcks != null) {
-			MessageAcks futureMsg =  futureViewMessagesAcks.first();
-			while(futureMsg.getMessage().getViewId() == currentView.getID()) {
-				undeliveredMessagesAcks.add(futureMsg);
-				futureViewMessagesAcks.remove(futureMsg);
-				futureMsg = futureViewMessagesAcks.first();
-				if(futureMsg == null) break;
-			}
-		}
+//		if(futureViewMessagesAcks != null) {
+//			MessageAcks futureMsg =  futureViewMessagesAcks.first();
+//			while(futureMsg.getMessage().getViewId() == currentView.getID()) {
+//				undeliveredMessagesAcks.add(futureMsg);
+//				futureViewMessagesAcks.remove(futureMsg);
+//				futureMsg = futureViewMessagesAcks.first();
+//				if(futureMsg == null) break;
+//			}
+//		}
 
 		if(DEBUG_PRINT) System.out.println("DEBUG: Installed view: " + currentView);
 	}

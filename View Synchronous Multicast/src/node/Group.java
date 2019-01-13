@@ -6,7 +6,7 @@ import java.io.ObjectInputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 
-import membershipService.View;
+import view.View;
 
 public class Group {
 	private int nodeID;
