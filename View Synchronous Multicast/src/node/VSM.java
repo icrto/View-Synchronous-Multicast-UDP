@@ -115,33 +115,32 @@ public class VSM extends Thread {
 
 				mostRecentNotInstalledView = getLastElement(viewQueue); // TODO: don't do this every time
 
+				// Discover if got excluded 
 				if(!mostRecentNotInstalledView.getNodes().contains(nodeId)) {
 					if(DEBUG_PRINT) System.out.println("DEBUG: Node got excluded");
 					excludeNode(); 
 					continue;
 				}
 
+				// Compose the intersection between current view and latest view to install
 				View intersectionView = new View(-1);
-
 				HashSet<Integer> intersectionNodeIds = new HashSet<Integer>(currentView.getNodes());
 				intersectionNodeIds.retainAll(mostRecentNotInstalledView.getNodes());
-
 
 				intersectionView.setNodes(intersectionNodeIds);
 
 
+				if(!unstableMsgsSent) {
+					updateUnstableMsgsAcks(mostRecentNotInstalledView);
+					sendUnstableMsgs(intersectionView);
+					unstableMsgsSentTime = System.currentTimeMillis();
+					unstableMsgsSent = true; 
+				} 
 
+				if(unstableMsgsSent && unstableMsgsSentTime + timeout <= System.currentTimeMillis()) {
+					// TODO: suspect de quem não recebeu ack
+				}
 
-				//				if(!unstableMsgsSent) {
-				//					updateUnstableMsgsAcks(mostRecentNotInstalledView);
-				//					// TODO: sendUnstableMsgs();
-				//					unstableMsgsSentTime = System.currentTimeMillis();
-				//					unstableMsgsSent = true; 
-				//				} 
-				//
-				//				if(unstableMsgsSent && unstableMsgsSentTime + timeout <= System.currentTimeMillis()) {
-				//					// TODO: suspect de quem não recebeu ack
-				//				}
 
 				// All messages are stable
 				if(undeliveredMessagesAcks.isEmpty() && deliveredMessagesAcks.isEmpty() && becameEmpty) {
@@ -152,26 +151,20 @@ public class VSM extends Thread {
 				// Timeout = 1 => blocks as little as possible (1 ms)
 				msg = receiveMsg(1);
 				if(msg != null) {
-
 					if(msg instanceof PayloadMessage) {
 						//if(DEBUG_PRINT) System.out.println("DEBUG: Received payload message, starting to process it...");
-						try {
-							handlePayloadMessage((PayloadMessage)msg);
-						} catch (IOException e) {
-							System.out.println("ERROR: Failed to send ack (serialization or socket problem), continued...");
-						}
+						handlePayloadMessage((PayloadMessage)msg);
 					} else if (msg instanceof AckMessage) {
 						//if(DEBUG_PRINT) System.out.println("DEBUG: Received ack message, starting to process it...");
 						handleAckMessage((AckMessage)msg);
 					} else if(msg instanceof FlushMessage) { 
 						handleFlushMessage((FlushMessage)msg, intersectionView);
 					} else if (msg instanceof PayloadAcksMessage) {
-						handlePayloadAcksMessage((AckMessage)msg);
+						handlePayloadAcksMessage((PayloadAcksMessage)msg);
 					} else {
 						System.out.println("ERROR: Received message with unknown type, continued...");
 						continue;
 					}
-
 				}
 
 			} else { // Normal operation
@@ -183,11 +176,7 @@ public class VSM extends Thread {
 				// Handle received msg
 				if(msg instanceof PayloadMessage) {
 					//if(DEBUG_PRINT) System.out.println("DEBUG: Received payload message, starting to process it...");
-					try {
-						handlePayloadMessage((PayloadMessage)msg);
-					} catch (IOException e) {
-						System.out.println("ERROR: Failed to send ack (serialization or socket problem), continued...");
-					}
+					handlePayloadMessage((PayloadMessage)msg);
 				} else if (msg instanceof AckMessage) {
 					//if(DEBUG_PRINT) System.out.println("DEBUG: Received ack message, starting to process it...");
 					handleAckMessage((AckMessage)msg);
@@ -195,7 +184,7 @@ public class VSM extends Thread {
 					//handleFlushMessage((FlushMessage)msg); // TODO: Check this!
 				} else if (msg instanceof PayloadAcksMessage) {
 					//if(DEBUG_PRINT) System.out.println("DEBUG: Received payload with acks message, starting to process it...");
-					handlePayloadAcksMessage((AckMessage)msg);
+					handlePayloadAcksMessage((PayloadAcksMessage)msg);
 				} else {
 					System.out.println("ERROR: Received message with unknown type, continued...");
 					continue;
@@ -205,8 +194,11 @@ public class VSM extends Thread {
 
 		}
 	}
+	
+	
+	//Verficar aqui os duplicados
 
-	private void handlePayloadMessage(PayloadMessage msg) throws IOException {
+	private void handlePayloadMessage(PayloadMessage msg) {
 		if(DEBUG_PRINT) System.out.println("DEBUG: Received payload message " + msg); 
 
 		MessageAcks msgAcks = new MessageAcks(msg);
@@ -237,7 +229,7 @@ public class VSM extends Thread {
 		// TODO: more checks needed?
 
 
-		// Add message to undelivered message buffer - SELF-DELIVERY
+		// Add message to undelivered message buffer
 		lock.lock();
 		undeliveredMessagesAcks.add(new MessageAcks(msg));
 		if(DEBUG_PRINT) System.out.println("DEBUG: Added " + msg.toString() + " to undelivered HashSet");
@@ -245,6 +237,7 @@ public class VSM extends Thread {
 		lock.unlock();
 
 		sendAck(msg);
+	
 	}
 
 	private void handleAckMessage(AckMessage msg) {
@@ -306,9 +299,51 @@ public class VSM extends Thread {
 		lock.unlock();
 	}
 
-	private void handlePayloadAcksMessage(AckMessage msg) {
+	private void handlePayloadAcksMessage(PayloadAcksMessage msg) {
+		if(DEBUG_PRINT) System.out.println("DEBUG: Received payload message " + msg); 
+
+		MessageAcks msgAcks = new MessageAcks(msg);
+		// Previous view
+		if(msg.getViewId() < currentView.getID()) {
+			if(DEBUG_PRINT) System.out.println("DEBUG: Received message from previous view, discarded..");
+			return;
+		}
+		// Future view -> store in set
+		if(msg.getViewId() > currentView.getID()) {
+			if(DEBUG_PRINT) System.out.println("DEBUG: Received future view message, stored..");
+			futureViewMessagesAcks.add(msgAcks);
+			return;
+		}
+		// Doesn't belong to current view
+		if(!currentView.getNodes().contains(msg.getSenderId())) {
+			if(DEBUG_PRINT) System.out.println("DEBUG: Received message that wasn't sent from a view member, discarded..");
+			return;
+		}
+		// Check for duplicates
+		lock.lock();
+		if(undeliveredMessagesAcks.contains(msgAcks) || deliveredMessagesAcks.contains(msgAcks) || stableMessages.contains(msg)) {
+			if(DEBUG_PRINT) System.out.println("DEBUG: Received duplicate message, discarded..");
+			lock.unlock();
+			
+			// Send ack even if we already had the msg
+			sendAck((PayloadMessage)msg);
+			
+			return;
+		}
+		lock.unlock();
+		// TODO: more checks needed?
 
 
+		// Add message to undelivered message buffer
+		lock.lock();
+		msgAcks.ackIds = msg.getAckIds();
+		undeliveredMessagesAcks.add(new MessageAcks(msg));
+		if(DEBUG_PRINT) System.out.println("DEBUG: Added " + msg.toString() + " to undelivered HashSet");
+		notEmpty.signal();
+		lock.unlock();
+
+		sendAck((PayloadMessage)msg);
+	
 	}
 
 	private void handleFlushMessage(FlushMessage msg, View intersectionView) {
@@ -373,8 +408,8 @@ public class VSM extends Thread {
 		 * node can still send messages (check if it makes sense) and they are discarded by other nodes (this is working, Isabel checked it)
 		 * but excluded node still receives and delivers its own message --> THIS NEEDS TO BE CORRECTED
 		 */
-		
-		
+
+
 		// Block until there is no new view to install
 		while(!viewQueue.isEmpty());
 
@@ -503,9 +538,30 @@ public class VSM extends Thread {
 		return lastElement;
 	}
 
-	private void sendAck(PayloadMessage msg) throws IOException {
+	private void sendAck(PayloadMessage msg) {
 		AckMessage ackMessage = new AckMessage(currentView.getID(), nodeId, msg.getSenderId(), msg.getSeqN());
 		sendMsg(ackMessage);
+	}
+
+
+	private void sendUnstableMsgs(View intersectionView) {
+		lock.lock();
+		for(MessageAcks msgAcks:undeliveredMessagesAcks) {
+			if(!msgAcks.getAckIds().equals(intersectionView.getNodes())) {
+				PayloadAcksMessage payloadAcksMsg = 
+						new PayloadAcksMessage(currentView.getID(), nodeId, msgAcks.getMessage().getSeqN(), 
+								msgAcks.getMessage().getPayload(), msgAcks.getAckIds());
+				sendMsg(payloadAcksMsg);
+			}
+
+		}
+		for(MessageAcks msgAcks:deliveredMessagesAcks) {
+			PayloadAcksMessage payloadAcksMsg = 
+					new PayloadAcksMessage(currentView.getID(), nodeId, msgAcks.getMessage().getSeqN(), 
+							msgAcks.getMessage().getPayload(), msgAcks.getAckIds());
+			sendMsg(payloadAcksMsg);
+		}
+		lock.unlock();
 	}
 
 	private void sendFlush() {
@@ -595,6 +651,16 @@ public class VSM extends Thread {
 		stableMessages = new HashSet<PayloadMessage>();
 		mostRecentNotInstalledView = null;
 		becameEmpty = true;
+		
+		MessageAcks futureMsg =  futureViewMessagesAcks.first();
+		
+		while(futureMsg.getMessage().getViewId() == currentView.getID()) {
+			undeliveredMessagesAcks.add(futureMsg);
+			futureViewMessagesAcks.remove(futureMsg);
+			futureMsg = futureViewMessagesAcks.first();
+		}
+		
+		
 		if(DEBUG_PRINT) System.out.println("DEBUG: Installed view: " + currentView);
 	}
 	private void excludeNode() {
@@ -631,20 +697,21 @@ public class VSM extends Thread {
 	 * 										*
 	 ****************************************/
 
+
 	@SuppressWarnings("unused")
 	private class MessageAcks implements Comparable<MessageAcks> {
-		public Message message = null;
+		public PayloadMessage message = null;
 		public HashSet<Integer> ackIds = new HashSet<Integer>(); // TODO: Check if it's better to remove ids instead of adding them 
 		public MessageAcks(PayloadMessage message) {
 			super();
 			this.message = message;
 		}
 
-		public Message getMessage() {
+		public PayloadMessage getMessage() {
 			return message;
 		}
 
-		public void setMessage(Message message) {
+		public void setMessage(PayloadMessage message) {
 			this.message = message;
 		}
 
