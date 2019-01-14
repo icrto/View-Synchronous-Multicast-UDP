@@ -32,7 +32,7 @@ public class Group {
 						while(true) {
 							try {
 								View newView = (View)input.readObject();
-								System.out.println("RECEIVED: " + newView.toString());
+								System.out.println("N" + nodeID + " RECEIVED: " + newView.toString());
 								vsm.addViewToQueue(newView);
 								
 							} catch (IOException e) {
