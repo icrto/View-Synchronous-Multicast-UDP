@@ -20,7 +20,7 @@ public class View implements Serializable{
 	public void setID(int id) {
 		this.id = id;
 	}
-	public Set<Integer> getNodes() {
+	public HashSet<Integer> getNodes() {
 		return nodes;
 	}
 	public void setNodes(HashSet<Integer> nodes) {
