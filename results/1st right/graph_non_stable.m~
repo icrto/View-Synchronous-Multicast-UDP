@@ -1,0 +1,24 @@
+clc;
+clear;
+nrNodes = 3;
+nrStableMsgs = 3;
+nrMaxNonStableMsgs = 1;
+nrMeasurements = 2;
+
+for i = 1:nrNodes-1
+    filename = sprintf('%d_%d %d.csv', i, nrNodes, nrStableMsgs);
+    N{i} = csvread(filename);
+end
+
+figure;
+x = (1:nrMaxNonStableMsgs+1)';
+y = zeros((nrNodes-1)*nrMeasurements,1);
+l = 0;
+for i = 1:nrMaxNonStableMsgs+1
+    for j=1:nrNodes-1
+        for k=1:nrMeasurements
+            y(l) = N{j}(i, k)
+            l++
+        end
+    end
+end
