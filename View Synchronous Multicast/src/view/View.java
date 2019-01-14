@@ -9,7 +9,7 @@ public class View implements Serializable{
 	 */
 	private static final long serialVersionUID = 1L;
 	private int id = 0;
-	private Set<Integer> nodes;
+	private HashSet<Integer> nodes;
 	public View(int id){
 		this.id = id;
 		this.nodes = new HashSet<Integer>();
@@ -20,10 +20,10 @@ public class View implements Serializable{
 	public void setID(int id) {
 		this.id = id;
 	}
-	public Set<Integer> getNodes() {
+	public HashSet<Integer> getNodes() {
 		return nodes;
 	}
-	public void setNodes(Set<Integer> nodes) {
+	public void setNodes(HashSet<Integer> nodes) {
 		this.nodes = nodes;
 	}
 	public boolean join(int node) {

@@ -4,7 +4,9 @@ import java.io.IOException;
 import java.util.Scanner;
 
 public class Main {
-
+	private static final int NORMAL = 0;
+	private static final int MEASURE = 1;
+	private static final int SUSPECT = 2;
 	private static Scanner scanner;
 
 	public static void main(String[] args) throws IOException {
@@ -37,7 +39,7 @@ public class Main {
 		}
 			
 		
-		VSM vsm = new VSM(nNodes, ID, IPmulticast, port, timeout, dropRate, avgDelay, stdDelay);
+		VSM vsm = new VSM(nNodes, ID, IPmulticast, port, timeout, dropRate, avgDelay, stdDelay, MEASURE);
 		vsm.start();
 
 		Receive rcv = new Receive(vsm);
