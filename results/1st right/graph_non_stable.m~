@@ -1,5 +1,6 @@
 clc;
 clear;
+close all;
 nrNodes = 3;
 nrStableMsgs = 3;
 nrMaxNonStableMsgs = 1;
@@ -10,15 +11,37 @@ for i = 1:nrNodes-1
     N{i} = csvread(filename);
 end
 
-figure;
 x = (1:nrMaxNonStableMsgs+1)';
-y = zeros((nrNodes-1)*nrMeasurements,1);
-l = 0;
+l = 1;
+y = zeros(nrMaxNonStableMsgs+1, (nrNodes-1)*nrMeasurements);
+
+fig = figure;
+xlabel('Número de mensagens não estáveis', 'FontSize', 18);
+ylabel('Duração da mudança de vista (ms)', 'FontSize', 18);
+xticks(x')
+set(gca,'XTickLabel',(x-1)');
+leg = sprintf('NrMsgsEstáveis %d\nNrNós %d', nrStableMsgs, nrNodes);
+title(leg);
+grid on;
+hold on;
+
 for i = 1:nrMaxNonStableMsgs+1
+    l = 1;
     for j=1:nrNodes-1
         for k=1:nrMeasurements
-            y(l) = N{j}(i, k)
-            l++
+            y(i,l) = N{j}(i, k + 1)/1000;
+            l = l + 1;
         end
     end
 end
+%y_norm = (y - mean(y(:)))./(std(y(:)))
+for i = 1:nrMaxNonStableMsgs+1
+    for j=1:(nrNodes-1)*nrMeasurements
+        scatter(x(i), y(i,j), 'r', 'filled')
+    end
+            scatter(x(i), y(i,j), 'r', 'filled')
+
+end
+
+figName = sprintf('NonStable %d %d.png', nrNodes, nrStableMsgs);
+saveas(fig, figName);

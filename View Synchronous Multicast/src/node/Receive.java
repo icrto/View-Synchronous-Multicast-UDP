@@ -17,6 +17,8 @@ public class Receive implements Runnable{
 		while(true) {  // Para ficar aqui preso sempre a receber 
 			
 			System.out.println("N" + vsm.getNodeId() + " Delivered: " + vsm.recvVSM());	
+			
+			//vsm.recvVSM();
 		}
 	}
 

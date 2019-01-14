@@ -28,8 +28,9 @@ import vsmMessage.PayloadMessage;
 public class VSM extends Thread {
 
 	//0 -> no prints
-	//1 -> all prints
-	//2 -> only installed view and exclusion
+	//1 -> only installed view and exclusion
+	//2 -> only installed view, exclusion and flushes
+	//3 -> all prints
 	private static final int DEBUG_PRINT = 1;
 
 	private final Lock lock = new ReentrantLock();
@@ -156,7 +157,7 @@ public class VSM extends Thread {
 	@Override
 	public void run() {
 
-		if(DEBUG_PRINT == 2)System.out.println("N" + nodeId + " " + "Receiver thread starting...");
+		if(DEBUG_PRINT > 2) System.out.println("N" + nodeId + " " + "Receiver thread starting...");
 		// Receiver thread code goes here
 
 		while(true) {
@@ -258,29 +259,29 @@ public class VSM extends Thread {
 	//Verficar aqui os duplicados
 
 	private void handlePayloadMessage(PayloadMessage msg) {
-		if(DEBUG_PRINT == 2) System.out.println("N" + nodeId + " " + "DEBUG: Received payload message " + msg); 
+		if(DEBUG_PRINT == 3) System.out.println("N" + nodeId + " " + "DEBUG: Received payload message " + msg); 
 
 		MessageAcks msgAcks = new MessageAcks(msg);
 		// Previous view
 		if(msg.getViewId() < currentView.getID()) {
-			if(DEBUG_PRINT == 2) System.out.println("N" + nodeId + " " + "DEBUG: Received message from previous view, discarded..");
+			if(DEBUG_PRINT == 3) System.out.println("N" + nodeId + " " + "DEBUG: Received message from previous view, discarded..");
 			return;
 		}
 		// Future view -> store in set
 		if(msg.getViewId() > currentView.getID()) {
-			if(DEBUG_PRINT == 2) System.out.println("N" + nodeId + " " + "DEBUG: Received future view message, stored..");
+			if(DEBUG_PRINT == 3) System.out.println("N" + nodeId + " " + "DEBUG: Received future view message, stored..");
 			futureViewMessagesAcks.add(msgAcks);
 			return;
 		}
 		// Doesn't belong to current view
 		if(!currentView.getNodes().contains(msg.getSenderId())) {
-			if(DEBUG_PRINT == 2) System.out.println("N" + nodeId + " " + "DEBUG: Received message that wasn't sent from a view member, discarded..");
+			if(DEBUG_PRINT == 3) System.out.println("N" + nodeId + " " + "DEBUG: Received message that wasn't sent from a view member, discarded..");
 			return;
 		}
 		// Check for duplicates
 		lock.lock();
 		if(undeliveredMessagesAcks.contains(msgAcks) || deliveredMessagesAcks.contains(msgAcks) || stableMessages.contains(msg)) {
-			if(DEBUG_PRINT == 2) System.out.println("N" + nodeId + " " + "DEBUG: Received duplicate message, discarded..");
+			if(DEBUG_PRINT == 3) System.out.println("N" + nodeId + " " + "DEBUG: Received duplicate message, discarded..");
 			lock.unlock();
 			return;
 		}
@@ -295,7 +296,7 @@ public class VSM extends Thread {
 		//discard all flushes if new message arrives
 		receivedFlushes = new HashSet<FlushMessage>();
 
-		if(DEBUG_PRINT == 2) System.out.println("N" + nodeId + " " + "DEBUG: Added " + msg.toString() + " to undelivered HashSet");
+		if(DEBUG_PRINT == 3) System.out.println("N" + nodeId + " " + "DEBUG: Added " + msg.toString() + " to undelivered HashSet");
 		notEmpty.signal();
 		lock.unlock();
 
@@ -304,11 +305,11 @@ public class VSM extends Thread {
 	}
 
 	private void handleAckMessage(AckMessage msg) {
-		if(DEBUG_PRINT == 2) System.out.println("N" + nodeId + " " + "DEBUG: Received ack " + msg); 
+		if(DEBUG_PRINT == 3) System.out.println("N" + nodeId + " " + "DEBUG: Received ack " + msg); 
 
 		// Previous view
 		if(msg.getViewId() < currentView.getID()) {
-			if(DEBUG_PRINT == 2) System.out.println("N" + nodeId + " " + "DEBUG: Received message from previous view, discarded..");
+			if(DEBUG_PRINT == 3) System.out.println("N" + nodeId + " " + "DEBUG: Received message from previous view, discarded..");
 			return;
 		}
 		// Future view
@@ -321,7 +322,7 @@ public class VSM extends Thread {
 			}
 		}
 		if(!currentView.getNodes().contains(msg.getSenderId())) {
-			if(DEBUG_PRINT == 2) System.out.println("N" + nodeId + " " + "DEBUG: Received message that wasn't sent from a view member, discarded..");
+			if(DEBUG_PRINT == 3) System.out.println("N" + nodeId + " " + "DEBUG: Received message that wasn't sent from a view member, discarded..");
 			return;
 		}
 		// TODO: more checks needed?
@@ -349,21 +350,21 @@ public class VSM extends Thread {
 			if(acks.message.getSenderId() == msg.getAckSenderId() && ((PayloadMessage)acks.message).getSeqN() == msg.getAckSeqN()) {
 				acks.ackIds.add(msg.getSenderId());
 				if(viewQueue.isEmpty() && acks.ackIds.equals(currentView.getNodes())) { //normal operation
-					if(DEBUG_PRINT == 2) System.out.println("N" + nodeId + " " + "DEBUG: message " + acks.getMessage() + " was transferred from delivered set to stable message set...");
+					if(DEBUG_PRINT == 3) System.out.println("N" + nodeId + " " + "DEBUG: message " + acks.getMessage() + " was transferred from delivered set to stable message set...");
 					stableMessages.add((PayloadMessage)acks.message);
 					//deliveredMessagesAcks.remove(acks);
 					toRemove.add(acks);
 					if(deliveredMessagesAcks.isEmpty() && undeliveredMessagesAcks.isEmpty()) {
-						if(DEBUG_PRINT == 2) System.out.println("N" + nodeId + " " + "DEBUG: Both delivered and undelivered message sets became empty");
+						if(DEBUG_PRINT == 3) System.out.println("N" + nodeId + " " + "DEBUG: Both delivered and undelivered message sets became empty");
 						becameEmpty = true;
 					}
 				}else if(!viewQueue.isEmpty() && (intersectionView != null) && acks.ackIds.equals(intersectionView.getNodes())) { //changing view
-					if(DEBUG_PRINT == 2) System.out.println("N" + nodeId + " " + "DEBUG: message " + acks.getMessage() + " was transferred from delivered set to stable message set...");
+					if(DEBUG_PRINT == 3) System.out.println("N" + nodeId + " " + "DEBUG: message " + acks.getMessage() + " was transferred from delivered set to stable message set...");
 					stableMessages.add((PayloadMessage)acks.message);
 					//deliveredMessagesAcks.remove(acks);
 					toRemove.add(acks);
 					if(deliveredMessagesAcks.isEmpty() && undeliveredMessagesAcks.isEmpty()) {
-						if(DEBUG_PRINT == 2) System.out.println("N" + nodeId + " " + "DEBUG: Both delivered and undelivered message sets became empty");
+						if(DEBUG_PRINT == 3) System.out.println("N" + nodeId + " " + "DEBUG: Both delivered and undelivered message sets became empty");
 						becameEmpty = true;
 					}
 				}
@@ -376,7 +377,7 @@ public class VSM extends Thread {
 	}
 
 	private void handlePayloadAcksMessage(PayloadAcksMessage msg) {
-		if(DEBUG_PRINT == 2) System.out.println("N" + nodeId + " " + "DEBUG: Received payload acks message " + msg); 
+		if(DEBUG_PRINT == 3) System.out.println("N" + nodeId + " " + "DEBUG: Received payload acks message " + msg); 
 
 		PayloadMessage payloadMsg = new PayloadMessage(msg.getViewId(), msg.getSenderId(), msg.getSeqN(), msg.getPayload());
 		MessageAcks msgAcks = new MessageAcks(payloadMsg);
@@ -385,25 +386,25 @@ public class VSM extends Thread {
 
 		// Previous view
 		if(msg.getViewId() < currentView.getID()) {
-			if(DEBUG_PRINT == 2) System.out.println("N" + nodeId + " " + "DEBUG: Received message from previous view, discarded..");
+			if(DEBUG_PRINT == 3) System.out.println("N" + nodeId + " " + "DEBUG: Received message from previous view, discarded..");
 			return;
 		}
 		// Future view -> store in set
 		if(msg.getViewId() > currentView.getID()) {
-			if(DEBUG_PRINT == 2) System.out.println("N" + nodeId + " " + "DEBUG: Received future view message, stored..");
+			if(DEBUG_PRINT == 3) System.out.println("N" + nodeId + " " + "DEBUG: Received future view message, stored..");
 			futureViewMessagesAcks.add(msgAcks);
 			return;
 		}
 		// Doesn't belong to current view
 		if(!currentView.getNodes().contains(msg.getSenderId())) {
-			if(DEBUG_PRINT == 2) System.out.println("N" + nodeId + " " + "DEBUG: Received message that wasn't sent from a view member, discarded..");
+			if(DEBUG_PRINT == 3) System.out.println("N" + nodeId + " " + "DEBUG: Received message that wasn't sent from a view member, discarded..");
 			return;
 		}
 		// Check for duplicates
 		lock.lock();
 
 		if(undeliveredMessagesAcks.contains(msgAcks) || deliveredMessagesAcks.contains(msgAcks) || stableMessages.contains(payloadMsg)) {
-			if(DEBUG_PRINT == 2) System.out.println("N" + nodeId + " " + "DEBUG: Received duplicate message, discarded..");
+			if(DEBUG_PRINT == 3) System.out.println("N" + nodeId + " " + "DEBUG: Received duplicate message, discarded..");
 			lock.unlock();
 
 			// Send ack even if we already had the msg
@@ -426,7 +427,7 @@ public class VSM extends Thread {
 		//discard all flushes if new message arrives
 		receivedFlushes = new HashSet<FlushMessage>();
 
-		if(DEBUG_PRINT == 2) System.out.println("N" + nodeId + " " + "DEBUG: Added " + msg.toString() + " to undelivered HashSet");
+		if(DEBUG_PRINT == 3) System.out.println("N" + nodeId + " " + "DEBUG: Added " + msg.toString() + " to undelivered HashSet");
 		notEmpty.signal();
 		lock.unlock();
 
@@ -442,24 +443,24 @@ public class VSM extends Thread {
 			return; //TODO: talvez guardar o flush para mais tarde?
 		}
 
-		if(DEBUG_PRINT == 2) System.out.println("N" + nodeId + " " + "Received flush: " + msg);
+		if(DEBUG_PRINT > 1) System.out.println("N" + nodeId + " " + "DEBUG: Received flush: " + msg);
 
 		// Previous view
 		if(msg.getViewId() < currentView.getID()) {
-			if(DEBUG_PRINT == 2) System.out.println("N" + nodeId + " " + "DEBUG: Received flush from previous view, discarded..");
+			if(DEBUG_PRINT > 1) System.out.println("N" + nodeId + " " + "DEBUG: Received flush from previous view, discarded..");
 			lock.unlock();
 			return;
 		}
 		// Future view
 		if(msg.getViewId() > currentView.getID()) {
 			//TODO: save flush from future view in different set
-			if(DEBUG_PRINT == 2) System.out.println("N" + nodeId + " " + "DEBUG: Received flush from future view, discarded..");
+			if(DEBUG_PRINT > 1) System.out.println("N" + nodeId + " " + "DEBUG: Received flush from future view, discarded..");
 			lock.unlock();
 			return;
 		}
 
 		if(!intersectionView.getNodes().contains(msg.getSenderId())) {
-			if(DEBUG_PRINT == 2) System.out.println("N" + nodeId + " " + "DEBUG: Received flush from node that doesn't belong to intersection, discarded..");
+			if(DEBUG_PRINT > 1) System.out.println("N" + nodeId + " " + "DEBUG: Received flush from node that doesn't belong to intersection, discarded..");
 			lock.unlock();
 			return;
 		}
@@ -481,7 +482,7 @@ public class VSM extends Thread {
 		if(flushStableMsgsIDs.equals(stableMsgsIDs)) {
 
 			receivedFlushes.add(msg);
-			if(DEBUG_PRINT == 2) System.out.println("N" + nodeId + " " + "Received flushes set updated" + receivedFlushes);
+			if(DEBUG_PRINT > 1) System.out.println("N" + nodeId + " " + "DEBUG: Received flushes set updated" + receivedFlushes);
 
 			if(receivedFlushes.size() == intersectionView.getNodes().size()) { 
 
@@ -526,7 +527,7 @@ public class VSM extends Thread {
 
 		lock.lock();
 		undeliveredMessagesAcks.add(new MessageAcks(message, this.nodeId)); //put msg in undelivered buffer along with its own ack
-		if(DEBUG_PRINT == 2) System.out.println("N" + nodeId + " " + "DEBUG: Added " + message.toString() + " to undelivered HashSet - SELF-DELIVERY");
+		if(DEBUG_PRINT == 3) System.out.println("N" + nodeId + " " + "DEBUG: Added " + message.toString() + " to undelivered HashSet - SELF-DELIVERY");
 		notEmpty.signal();
 		lock.unlock();
 
@@ -547,22 +548,22 @@ public class VSM extends Thread {
 			payload = new String(((PayloadMessage)msgAcks.getMessage()).getPayload());
 			undeliveredMessagesAcks.remove(msgAcks);
 			if(viewQueue.isEmpty() && msgAcks.ackIds.equals(currentView.getNodes())) { //normal operation
-				if(DEBUG_PRINT == 2) System.out.println("N" + nodeId + " " + "DEBUG: message " + msgAcks.message + " was transferred from undelivered set to stable message set...");
+				if(DEBUG_PRINT == 3) System.out.println("N" + nodeId + " " + "DEBUG: message " + msgAcks.message + " was transferred from undelivered set to stable message set...");
 				stableMessages.add((PayloadMessage)msgAcks.message);
 				if(deliveredMessagesAcks.isEmpty() && undeliveredMessagesAcks.isEmpty()) {
-					if(DEBUG_PRINT == 2) System.out.println("N" + nodeId + " " + "DEBUG: Both delivered and undelivered message sets became empty");
+					if(DEBUG_PRINT == 3) System.out.println("N" + nodeId + " " + "DEBUG: Both delivered and undelivered message sets became empty");
 					becameEmpty = true;
 				}
 			}else if(!viewQueue.isEmpty() && (intersectionView != null) && msgAcks.ackIds.equals(intersectionView.getNodes())) { //changing view
-				if(DEBUG_PRINT == 2) System.out.println("N" + nodeId + " " + "DEBUG: message " + msgAcks.message + " was transferred from undelivered set to stable message set...");
+				if(DEBUG_PRINT == 3) System.out.println("N" + nodeId + " " + "DEBUG: message " + msgAcks.message + " was transferred from undelivered set to stable message set...");
 				stableMessages.add((PayloadMessage)msgAcks.message);
 				if(deliveredMessagesAcks.isEmpty() && undeliveredMessagesAcks.isEmpty()) {
-					if(DEBUG_PRINT == 2) System.out.println("N" + nodeId + " " + "DEBUG: Both delivered and undelivered message sets became empty");
+					if(DEBUG_PRINT == 3) System.out.println("N" + nodeId + " " + "DEBUG: Both delivered and undelivered message sets became empty");
 					becameEmpty = true;
 				}
 			}
 			else {
-				if(DEBUG_PRINT == 2) System.out.println("N" + nodeId + " " + "DEBUG: message " + msgAcks.message + " was transferred from undelivered set to delivered message set...");
+				if(DEBUG_PRINT == 3) System.out.println("N" + nodeId + " " + "DEBUG: message " + msgAcks.message + " was transferred from undelivered set to delivered message set...");
 				deliveredMessagesAcks.add(msgAcks);
 			}
 		} catch (InterruptedException e) {
@@ -598,16 +599,12 @@ public class VSM extends Thread {
 		for(MessageAcks msgAcks:deliveredMessagesAcks) {
 			msgAcks.ackIds.retainAll(mostRecentNotInstalledView.getNodes());
 			if(msgAcks.ackIds.equals(mostRecentNotInstalledView.getNodes())) { //msg became stable
-				if(DEBUG_PRINT == 2) System.out.println("N" + nodeId + " " + "DEBUG: message " + msgAcks.getMessage() + " was transferred from delivered set to stable message set - VIEW CHANGE");
+				if(DEBUG_PRINT == 3) System.out.println("N" + nodeId + " " + "DEBUG: message " + msgAcks.getMessage() + " was transferred from delivered set to stable message set - VIEW CHANGE");
 				stableMessages.add((PayloadMessage)msgAcks.message);
-				
-				//TODO: this throws a java.util.ConcurrentModificationException had to change for according to
-				// https://stackoverflow.com/questions/8104692/how-to-avoid-java-util-concurrentmodificationexception-when-iterating-through-an
-				//deliveredMessagesAcks.remove(msgAcks);
 				
 				toRemove.add(msgAcks);
 				if(deliveredMessagesAcks.isEmpty() && undeliveredMessagesAcks.isEmpty()) {
-					if(DEBUG_PRINT == 2) System.out.println("N" + nodeId + " " + "DEBUG: Both delivered and undelivered message sets became empty");
+					if(DEBUG_PRINT == 3) System.out.println("N" + nodeId + " " + "DEBUG: Both delivered and undelivered message sets became empty");
 					becameEmpty = true;
 				}
 			}
@@ -765,7 +762,7 @@ public class VSM extends Thread {
 			System.out.println("N" + nodeId + " " + "ERROR: Could not send message: " + msg);
 			System.exit(-1);
 		}
-		if(DEBUG_PRINT == 2) {
+		if(DEBUG_PRINT == 3) {
 			if (msg instanceof PayloadAcksMessage) {
 				System.out.println("N" + nodeId + " " + "DEBUG: payload acks message sent: " + (PayloadAcksMessage)msg);
 			} else if(msg instanceof PayloadMessage) {

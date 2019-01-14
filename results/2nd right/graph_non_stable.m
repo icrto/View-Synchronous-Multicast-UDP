@@ -4,7 +4,7 @@ close all;
 nrNodes = 3;
 nrStableMsgs = 3;
 nrMaxNonStableMsgs = 1;
-nrMeasurements = 2;
+nrMeasurements = 3;
 
 for i = 1:nrNodes-1
     filename = sprintf('%d_%d %d.csv', i, nrNodes, nrStableMsgs);

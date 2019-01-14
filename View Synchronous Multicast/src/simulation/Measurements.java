@@ -1,7 +1,6 @@
 package simulation;
 
 import java.io.*;
-import java.text.*;
 import java.util.*;
 
 public class Measurements {
@@ -44,7 +43,6 @@ public class Measurements {
 		if(nrNonStableMsgs != Integer.parseInt(contents[0])){ //if nrNonStableMsgs changed it's time to add new line
 			writer.write(NEW_LINE_SEPARATOR);
 			writer.write(String.valueOf(nrNonStableMsgs));
-			writer.write(COMMA_DELIMITER);
 			writer.flush();
 		}
 
