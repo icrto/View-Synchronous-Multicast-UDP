@@ -42,8 +42,8 @@ public class Main {
 			String filePath = args[7];
 			int nrStableMsgs = Integer.parseInt(args[8]);
 			int nrNonStableMsgs = Integer.parseInt(args[9]);
-			
-			vsm = new VSM(nNodes, ID, IPmulticast, port, timeout, dropRate, avgDelay, stdDelay, filePath, nrStableMsgs, nrNonStableMsgs);
+			String variable = args[10];
+			vsm = new VSM(nNodes, ID, IPmulticast, port, timeout, dropRate, avgDelay, stdDelay, filePath, nrStableMsgs, nrNonStableMsgs, variable);
 		}
 		else {
 			vsm = new VSM(nNodes, ID, IPmulticast, port, timeout, dropRate, avgDelay, stdDelay);

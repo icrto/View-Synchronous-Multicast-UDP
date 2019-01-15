@@ -12,10 +12,26 @@ public class Measurements {
 	String filename = null;
 	private long init;
 	private long finish;
+	private int var;
+	private int nonvar1;
+	private int nonvar2;
+	
+	public Measurements(String filePath, int nodeID, int nrNodes, int nrStableMsgs, int nrNonStableMsgs, String variable) throws IOException{
 
-	public Measurements(String filePath, int nodeID, int nrNodes, int nrStableMsgs, int nrNonStableMsgs) throws IOException{
+		if(variable.equals("STABLE")) {
+			var = nrStableMsgs;
+			filename = new String(nodeID + "_" + nrNodes + " " + nrNonStableMsgs + ".csv");
+		} else if(variable.equals("NON_STABLE")) {
+			var = nrNonStableMsgs;
+			filename = new String(nodeID + "_" + nrNodes + " " + nrStableMsgs + ".csv");
+		} else if(variable.equals("NODES")) {
+			var = nrNodes;
+			filename = new String(nodeID + "_" + nrStableMsgs + " " + nrNonStableMsgs + ".csv");
+		} else {
+			System.out.println("Undefined variable");
+			System.exit(2);
+		}
 
-		filename = new String(nodeID + "_" + nrNodes + " " + nrStableMsgs + ".csv");
 		try {
 			file = new File(filePath, filename);
 		} catch (NullPointerException e) {
@@ -25,7 +41,7 @@ public class Measurements {
 
 			file.createNewFile();
 			writer = new FileWriter(file, true);
-			writer.write(String.valueOf(nrNonStableMsgs));
+			writer.write(String.valueOf(var));
 			writer.flush();
 		}
 		else {
@@ -34,19 +50,21 @@ public class Measurements {
 		String aux;
 		String []contents = null;
 		Scanner scan = new Scanner(file);
-		
+
 		//go to last line, get its first number (indicating nrNonStableMsgs -> script loop iteration count)
 		while(scan.hasNext()) { //has lines
 			aux = scan.nextLine();
 			contents = aux.split(COMMA_DELIMITER);
 		}
-		if(nrNonStableMsgs != Integer.parseInt(contents[0])){ //if nrNonStableMsgs changed it's time to add new line
+		if(var != Integer.parseInt(contents[0])){
 			writer.write(NEW_LINE_SEPARATOR);
-			writer.write(String.valueOf(nrNonStableMsgs));
+			writer.write(String.valueOf(var));
 			writer.flush();
 		}
 
 	}
+
+
 	public File getFile() {
 		return file;
 	}

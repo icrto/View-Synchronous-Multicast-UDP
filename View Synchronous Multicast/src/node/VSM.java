@@ -100,7 +100,7 @@ public class VSM extends Thread {
 	}
 
 	//constructor for measure mode
-	public VSM(int nNodes, int iD, String UDPmulticastIp, int port, int timeout, double dropRate, double avgDelay, double stdDelay, String filePath, int nrStableMsgs, int nrNonStableMsgs) {
+	public VSM(int nNodes, int iD, String UDPmulticastIp, int port, int timeout, double dropRate, double avgDelay, double stdDelay, String filePath, int nrStableMsgs, int nrNonStableMsgs, String variable) {
 
 		this.nrNodes = nNodes;
 		this.nodeId = iD;
@@ -142,7 +142,7 @@ public class VSM extends Thread {
 		}
 
 		try {
-			measure = new Measurements(filePath, this.nodeId, this.nrNodes, this.nrStableMsgs, this.nrNonStableMsgs);
+			measure = new Measurements(filePath, this.nodeId, this.nrNodes, this.nrStableMsgs, this.nrNonStableMsgs, variable);
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
