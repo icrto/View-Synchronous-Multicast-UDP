@@ -3,6 +3,7 @@ import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.Scanner;
 
 import view.View;
@@ -35,7 +36,6 @@ public class Controller {
 			}
 
 		}
-
 
 	}
 
@@ -95,10 +95,10 @@ public class Controller {
 				items = line.split(" ");
 				for(int i = 1; i < items.length; i++) {
 					if(items[0].equals("join")) {
-						sendNewView = currentView.join(Integer.parseInt(items[i]));		
+						sendNewView = currentView.join(Integer.parseInt(items[i]));	
 					}
 					else if(items[0].equals("leave")) {
-						sendNewView = currentView.leave(Integer.parseInt(items[i]));		
+						sendNewView = currentView.leave(Integer.parseInt(items[i]));	
 					}
 
 					if(sendNewView) {

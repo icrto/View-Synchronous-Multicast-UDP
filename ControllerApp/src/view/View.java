@@ -10,6 +10,7 @@ public class View implements Serializable{
 	private static final long serialVersionUID = 1L;
 	private int id = 0;
 	private HashSet<Integer> nodes;
+	
 	public View(int id){
 		this.id = id;
 		this.nodes = new HashSet<Integer>();
@@ -52,6 +53,7 @@ public class View implements Serializable{
 		}
 		else return false;
 	}
+
 
 
 }
