@@ -20,7 +20,7 @@ public class Main {
 		int ID = Integer.parseInt(args[1]);
 		String IPmulticast = args[2];
 		int port = Integer.parseInt(args[3]);
-		int timeout = 500; // TODO: change to parse from args[] (millis)
+		int timeout = 1000; // TODO: change to parse from args[] (millis)
 		double dropRate = Double.parseDouble(args[4]);
 		double avgDelay = Double.parseDouble(args[5]);
 		double stdDelay = Double.parseDouble(args[6]);
