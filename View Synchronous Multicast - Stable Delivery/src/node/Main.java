@@ -37,7 +37,7 @@ public class Main {
 		}
 			
 		
-		VSM vsm = new VSM(nNodes, ID, IPmulticast, port, timeout, dropRate, avgDelay, stdDelay);
+		VSMLD vsm = new VSMLD(nNodes, ID, IPmulticast, port, timeout, dropRate, avgDelay, stdDelay);
 		vsm.start();
 
 		Receive rcv = new Receive(vsm);

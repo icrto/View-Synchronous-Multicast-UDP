@@ -3,9 +3,9 @@ package node;
 public class Receive implements Runnable{
 
 	Thread receiver;
-	VSM vsm;
+	VSMLD vsm;
 
-	Receive(VSM vsm){
+	Receive(VSMLD vsm){
 		receiver = new Thread(this, "my runnable thread");
 		this.vsm = vsm;
 		receiver.start();
