@@ -5,13 +5,12 @@ import java.util.Scanner;
 
 public class Main {
 
-	private static Scanner scanner;
-
 	public static void main(String[] args) throws IOException {
 		// ARGS: 0->id  1->ip_group  2->port  3->dropRate 4->avgDelay  5->stdDelay
 		
-		if(args.length != 7) {
-			System.out.println("Usage: java -jar node.jar <nNodes> <ID> <IPMulticast> <port> <dropRate> <avgDelay> <stdDelay>");
+		if(args.length < 7) {
+			System.out.println("Usage: java -jar node.jar <nNodes> <ID> <IPMulticast> <port> <dropRate> <avgDelay> <stdDelay>"
+					+ " [<filePath> <nrStableMsgs> <nrNonStableMsgs> <variable>]");
 			System.exit(-1);
 		}
 	
@@ -26,6 +25,7 @@ public class Main {
 		double avgDelay = Double.parseDouble(args[5]);
 		double stdDelay = Double.parseDouble(args[6]);
 		
+		
 		if(validIP(IPmulticast) != true) {
 			System.out.println("IP isn't valid!");
 			System.exit(-1);
@@ -35,9 +35,23 @@ public class Main {
 			System.out.println("Use positive numbers!");
 			System.exit(-1);
 		}
+		
+		VSM vsm;
+		
+		if(args.length > 7) {
+			String filePath = args[7];
+			int nrStableMsgs = Integer.parseInt(args[8]);
+			int nrNonStableMsgs = Integer.parseInt(args[9]);
+			String variable = args[10];
+			
+			vsm = new VSM(nNodes, ID, IPmulticast, port, timeout, dropRate, avgDelay, stdDelay, filePath, nrStableMsgs, nrNonStableMsgs, variable);
+		}
+		else {
+			vsm = new VSM(nNodes, ID, IPmulticast, port, timeout, dropRate, avgDelay, stdDelay);
+		}
+
 			
 		
-		VSMLD vsm = new VSMLD(nNodes, ID, IPmulticast, port, timeout, dropRate, avgDelay, stdDelay);
 		vsm.start();
 
 		Receive rcv = new Receive(vsm);

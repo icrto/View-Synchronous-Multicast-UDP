@@ -17,17 +17,19 @@ import java.util.concurrent.locks.*;
 
 import view.View;
 import networkEmulation.NetworkEmulationMulticastSocket;
+import simulation.Measurements;
 import util.*;
 import vsmMessage.*;
 
-public class VSMLD extends VSM {
+public class VSM extends Thread {
 
-	private static final boolean DEBUG_PRINT = true;
+	private static final boolean DEBUG_PRINT = false;
 
 	private final Lock lock = new ReentrantLock();
 	private final Condition notEmpty = lock.newCondition();
 
 	private int nodeId;
+	private int nrNodes;
 
 	/* 
 	 * Fluxo das mensagens:
@@ -46,6 +48,7 @@ public class VSMLD extends VSM {
 
 	@SuppressWarnings("unused")
 	private Group group;
+	private Measurements measure = null;
 	private View currentView;
 	private InetAddress UDPgroup;
 	private int UDPport;
@@ -57,12 +60,14 @@ public class VSMLD extends VSM {
 	private View mostRecentNotInstalledView = null;
 	private boolean flushSent = false; // TODO: change to false when installed all new views
 
+	private long unstableMsgsSentTime = 0;
+	private String filePath;
 	private int nrStableMsgs;
 	private int nrNonStableMsgs;
 
 
-	public VSMLD(int nNodes, int iD, String UDPmulticastIp, int port, int timeout, double dropRate, double avgDelay, double stdDelay) {
-		super(nNodes, iD, UDPmulticastIp, port, timeout, dropRate, avgDelay, stdDelay);
+	public VSM(int nNodes, int iD, String UDPmulticastIp, int port, int timeout, double dropRate, double avgDelay, double stdDelay) {
+		this.nrNodes = nNodes;
 		this.nodeId = iD;
 		UDPport = port;
 		try {
@@ -70,33 +75,66 @@ public class VSMLD extends VSM {
 			s = new NetworkEmulationMulticastSocket(port, dropRate, avgDelay, stdDelay);
 			s.joinGroup(UDPgroup);
 		} catch (IOException e) {
-			System.out.println("ERROR: Failed to join UDP multicast group");
+			System.out.println("N" + nodeId + " " + "ERROR: Failed to join UDP multicast group");
 		}
 
 		group = new Group(this, nodeId);
+
 
 		currentView = new View(1);
 		for(int i = 1; i < nNodes + 1; i++) {
 			this.currentView.getNodes().add(i);
 		}
+		if(DEBUG_PRINT) System.out.println("N" + nodeId + " " + currentView.toString());
+	}
 
-		System.out.println(currentView.toString());
-		System.out.println("This node has ID " + nodeId);
+	//constructor for measure mode
+	public VSM(int nNodes, int iD, String UDPmulticastIp, int port, int timeout, double dropRate, double avgDelay, double stdDelay, String filePath, int nrStableMsgs, int nrNonStableMsgs, String variable) {
 		
-		
-		nrNonStableMsgs = 5;
-		nrStableMsgs = 5;
+		this.nrNodes = nNodes;
+		this.nodeId = iD;
+		UDPport = port;
+		try {
+			UDPgroup = InetAddress.getByName(UDPmulticastIp);
+			s = new NetworkEmulationMulticastSocket(port, dropRate, avgDelay, stdDelay);
+			s.joinGroup(UDPgroup);
+		} catch (IOException e) {
+			System.out.println("N" + nodeId + " " + "ERROR: Failed to join UDP multicast group");
+		}
+		this.filePath = filePath;
+		this.nrStableMsgs = nrStableMsgs;
+		this.nrNonStableMsgs = nrNonStableMsgs;
+		group = new Group(this, nodeId);
+
+
+		currentView = new View(1);
+		for(int i = 1; i < nNodes + 1; i++) {
+			this.currentView.getNodes().add(i);
+		}
+		if(DEBUG_PRINT)System.out.println("N" + nodeId + " " + currentView.toString());
+
+
+
+
 		int nrTotalMsgs = this.nrNonStableMsgs + this.nrStableMsgs;
+
 		//non stable
 		for(int i = 1; i < this.nrNonStableMsgs + 1; i++) {
 			//create msg and its own ACK
 			unstableMessagesAcks.add(new MessageAcks(new PayloadMessage(currentView.getID(), nodeId, i, "Msg " + nodeId + " " + (i)), this.nodeId));					
 		}
+
 		//stable
 		for(int i = this.nrNonStableMsgs + 1; i < nrTotalMsgs + 1; i++) {
 			stableMessages.add(new PayloadMessage(currentView.getID(), 1, i, "Msg " + i));
 		}
-		
+
+		try {
+			measure = new Measurements(filePath, this.nodeId, this.nrNodes, this.nrStableMsgs, this.nrNonStableMsgs, variable);
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 
 	/* **************************************
@@ -107,7 +145,7 @@ public class VSMLD extends VSM {
 
 	@Override
 	public void run() {
-		System.out.println("Receiver thread starting...");
+		if(DEBUG_PRINT)System.out.println("Receiver thread starting...");
 		// Receiver thread code goes here
 
 		Message msg = null;
@@ -156,7 +194,7 @@ public class VSMLD extends VSM {
 					} else if(msg instanceof FlushMessage) { 
 						handleFlushMessage((FlushMessage)msg, intersectionView);
 					} else {
-						System.out.println("ERROR: Received message with unknown type, continued...");
+						if(DEBUG_PRINT) System.out.println("ERROR: Received message with unknown type, continued...");
 						continue;
 					}
 				}
@@ -175,7 +213,7 @@ public class VSMLD extends VSM {
 				} else if(msg instanceof FlushMessage) {
 					futureFlushes.add((FlushMessage)msg);
 				} else {
-					System.out.println("ERROR: Received message with unknown type, continued...");
+					if(DEBUG_PRINT) System.out.println("ERROR: Received message with unknown type, continued...");
 					continue;
 				}
 
@@ -378,6 +416,8 @@ public class VSMLD extends VSM {
 
 	// Method to be called by Group thread when it receives a new view from controller
 	public void addViewToQueue(View view) {
+		if(measure != null)
+			measure.setInit(System.nanoTime());
 		viewQueue.add(view);
 	}
 
@@ -478,7 +518,7 @@ public class VSMLD extends VSM {
 	}
 
 	private Message receiveMsg(int timeout) { // Timeout = 0 => blocks
-		byte[] buffer = new byte[2048]; 
+		byte[] buffer = new byte[40000]; 
 		DatagramPacket recv;
 		Message msg = null;
 		recv = new DatagramPacket(buffer, buffer.length);
@@ -565,6 +605,7 @@ public class VSMLD extends VSM {
 		//		}
 
 		if(DEBUG_PRINT) System.out.println("DEBUG: Installed view: " + currentView);
+		if(measure != null) measure.setFinish(System.nanoTime());
 	}
 	private void excludeNode() {
 
@@ -666,8 +707,8 @@ public class VSMLD extends VSM {
 				return false;
 			return true;
 		}
-		private VSMLD getOuterType() {
-			return VSMLD.this;
+		private VSM getOuterType() {
+			return VSM.this;
 		}
 
 

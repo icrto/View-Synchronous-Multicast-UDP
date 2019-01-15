@@ -15,10 +15,10 @@ public class Group {
 	private Socket connectionSocket;
 	private ObjectInputStream input = null;
 	private DataOutputStream output = null;
-	private VSM vsm; // TODO: check if it's possible to remove this
+
 	public Group(VSM vsm, int ID) {
 		this.nodeID = ID;
-		this.vsm = vsm;
+		//this.vsm = vsm;
 
 		Thread t1 = new Thread(new Runnable() {
 			@Override
