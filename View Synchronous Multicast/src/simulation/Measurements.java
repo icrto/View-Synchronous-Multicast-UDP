@@ -81,7 +81,7 @@ public class Measurements {
 			writer.write(String.valueOf(measure));
 			writer.flush();
 			writer.close();
-			System.exit(1);
+		//	System.exit(1);
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();

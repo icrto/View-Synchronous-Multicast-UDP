@@ -30,7 +30,8 @@ public class VSM extends Thread {
 	//0 -> no prints
 	//1 -> all prints
 	//2 -> only installed view and exclusion
-	private static final int DEBUG_PRINT = 1;
+	private static final int DEBUG_PRINT = 3;
+	private static final int DEBUG_PRINT2 = 1;
 
 	private final Lock lock = new ReentrantLock();
 	private final Condition notEmpty = lock.newCondition();
@@ -46,6 +47,7 @@ public class VSM extends Thread {
 	private LinkedBlockingQueue<View> viewQueue = new LinkedBlockingQueue<View>();
 
 	private HashSet<FlushMessage> receivedFlushes = new HashSet<FlushMessage>();
+	private SortedSet<FlushMessage> futureFlushes = new TreeSet<FlushMessage>();
 
 	private Group group;
 	private Measurements measure = null;
@@ -83,12 +85,18 @@ public class VSM extends Thread {
 
 		group = new Group(this, nodeId);
 
-
 		currentView = new View(1);
 		for(int i = 1; i < nNodes + 1; i++) {
 			this.currentView.getNodes().add(i);
 		}
+		
 		System.out.println("N" + nodeId + " " + currentView.toString());
+		
+		//Testes para verificar condições iniciais 
+		futureViewMessagesAcks.add(new MessageAcks(new PayloadMessage(2, 1, 5, "Mensagem 1")));
+		futureViewMessagesAcks.add(new MessageAcks(new PayloadMessage(2, 1, 6, "Mensagem 2")));
+		futureViewMessagesAcks.add(new MessageAcks(new PayloadMessage(3, 1, 7, "Mensagem 3 da Vista 3")));
+		System.out.println("Num elementos em fut: " + futureViewMessagesAcks.size());
 	}
 
 	//constructor for measure mode
@@ -442,24 +450,25 @@ public class VSM extends Thread {
 			return; //TODO: talvez guardar o flush para mais tarde?
 		}
 
-		if(DEBUG_PRINT == 2) System.out.println("N" + nodeId + " " + "Received flush: " + msg);
+		if(DEBUG_PRINT == 3) System.out.println("\n" + "FLUSH: N" + nodeId + " " + "Received flush: " + msg + "\n");
 
 		// Previous view
 		if(msg.getViewId() < currentView.getID()) {
-			if(DEBUG_PRINT == 2) System.out.println("N" + nodeId + " " + "DEBUG: Received flush from previous view, discarded..");
+			if(DEBUG_PRINT == 3) System.out.println("\n" + "FLUSH: N" + nodeId + " " + "DEBUG: Received flush from previous view, discarded.." + "\n");
 			lock.unlock();
 			return;
 		}
 		// Future view
 		if(msg.getViewId() > currentView.getID()) {
 			//TODO: save flush from future view in different set
-			if(DEBUG_PRINT == 2) System.out.println("N" + nodeId + " " + "DEBUG: Received flush from future view, discarded..");
+			if(DEBUG_PRINT == 3) System.out.println("\n" + "FLUSH: N" + nodeId + " " + "DEBUG: Received future flush message, stored.." + "\n");
+			futureFlushes.add(msg);
 			lock.unlock();
 			return;
 		}
 
 		if(!intersectionView.getNodes().contains(msg.getSenderId())) {
-			if(DEBUG_PRINT == 2) System.out.println("N" + nodeId + " " + "DEBUG: Received flush from node that doesn't belong to intersection, discarded..");
+			if(DEBUG_PRINT == 3) System.out.println("\n" + "FLUSH: N" + nodeId + " " + "DEBUG: Received flush from node that doesn't belong to intersection, discarded.." + "\n");
 			lock.unlock();
 			return;
 		}
@@ -481,7 +490,7 @@ public class VSM extends Thread {
 		if(flushStableMsgsIDs.equals(stableMsgsIDs)) {
 
 			receivedFlushes.add(msg);
-			if(DEBUG_PRINT == 2) System.out.println("N" + nodeId + " " + "Received flushes set updated" + receivedFlushes);
+			if(DEBUG_PRINT == 3) System.out.println("\n" + "FLUSH: N" + nodeId + " " + "Received flushes set updated" + receivedFlushes + "\n");
 
 			if(receivedFlushes.size() == intersectionView.getNodes().size()) { 
 
@@ -489,6 +498,7 @@ public class VSM extends Thread {
 			}
 		} else {
 			lock.unlock();
+			if(DEBUG_PRINT == 3) System.out.println("\n" + "FLUSH: Msgs dos Flushs diferentes das minhas.... \n");
 			return;
 		}
 		lock.unlock();
@@ -794,20 +804,21 @@ public class VSM extends Thread {
 		mostRecentNotInstalledView = null;
 		becameEmpty = true;
 		intersectionView = null;
-
+		
 		if(!futureViewMessagesAcks.isEmpty()) {
-			MessageAcks futureMsg =  futureViewMessagesAcks.first();
+			Iterator<MessageAcks> itr = futureViewMessagesAcks.iterator();
+			MessageAcks futureMsg = itr.next();
 			while(futureMsg.getMessage().getViewId() == currentView.getID()) {
 				undeliveredMessagesAcks.add(futureMsg);
-				futureViewMessagesAcks.remove(futureMsg);
-				if(!futureViewMessagesAcks.isEmpty()) {
-					futureMsg = futureViewMessagesAcks.first();
+				itr.remove();
+				if(itr.hasNext()) {
+					futureMsg = itr.next();
 				}else {
 					break;
 				}
 			}
-
 		}
+		
 
 		if(DEBUG_PRINT > 0) System.out.println("N" + nodeId + " " + "DEBUG: Installed view: " + currentView);
 		if(measure != null) measure.setFinish(System.nanoTime());
