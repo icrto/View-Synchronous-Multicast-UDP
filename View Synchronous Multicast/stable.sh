@@ -1,4 +1,5 @@
 #!/bin/bash
+VARIABLE="STABLE"
 NR_NODES=7
 NR_MAX_NON_STABLE_MSGS=10
 NR_MAX_STABLE_MSGS=200
@@ -10,6 +11,7 @@ AVG_DELAY=0
 STD_DELAY=0
 DIRECTORY="results"
 FILEPATH="results/stable/$(date +%Y%m%d_%H%M%S)"
+#FILEPATH="results/stable/teste"
 if [ ! -d "$DIRECTORY" ]; then
   mkdir results
 fi
@@ -28,7 +30,7 @@ do
     PIDS=()
     for (( i = 1; i < $NR_NODES + 1; i++ ))
     do
-      java -jar node.jar $NR_NODES $i $IP $PORT $DROP_RATE $AVG_DELAY $STD_DELAY $FILEPATH $k $NR_MAX_NON_STABLE_MSGS &
+      java -jar node.jar $NR_NODES $i $IP $PORT $DROP_RATE $AVG_DELAY $STD_DELAY $FILEPATH $k $NR_MAX_NON_STABLE_MSGS $VARIABLE &
       PIDS+=($!)
     done
     echo ${PIDS[@]}

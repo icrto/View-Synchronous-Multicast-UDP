@@ -3,6 +3,7 @@ package node;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
+import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 
@@ -14,7 +15,7 @@ public class Group {
 	private ServerSocket welcomeSocket = null;
 	private Socket connectionSocket;
 	private ObjectInputStream input = null;
-	private DataOutputStream output = null;
+	private PrintWriter output = null;
 
 	public Group(VSM vsm, int ID) {
 		this.nodeID = ID;
@@ -34,7 +35,7 @@ public class Group {
 								View newView = (View)input.readObject();
 								System.out.println("N" + nodeID + " RECEIVED: " + newView.toString());
 								vsm.addViewToQueue(newView);
-								
+
 							} catch (IOException e) {
 								System.err.println("Connection Failed");
 								System.exit(-1);
@@ -60,21 +61,15 @@ public class Group {
 	/**
 	 * Method to inform Controller that a node has to leave the view 
 	 */
-	public void suspect(Integer node) {
+	public void installedView() {
 		try {
-			output = new DataOutputStream(connectionSocket.getOutputStream());
+			output = new PrintWriter(connectionSocket.getOutputStream(), true);
 		} catch (IOException e) {
 			System.err.println("Output Stream Creation Failed");
 			System.exit(-1);
 		}
-		try {
-			output.writeInt(node);
-			output.flush();
-		} catch (IOException e) {
-			System.err.println("Couldn't write to Output Stream");
-			System.exit(-1);
-		}
-		
+		output.println("Olá");
+		System.out.println("avisou controller");
 	}
 
 
