@@ -583,7 +583,8 @@ public class VSM extends Thread {
 			return;
 		}
 
-		if(msg.getAckSenderId() == nodeId) ackFlushes.add(msg);		
+		if(msg.getAckSenderId() == nodeId) ackFlushes.add(msg);	
+		else return;
 
 		if(ackFlushes.size() == intersectionView.getNodes().size()) {
 			if(receivedFlushes.size() == intersectionView.getNodes().size()) { 
