@@ -1,6 +1,5 @@
 package controller;
-import java.io.IOException;
-import java.io.ObjectOutputStream;
+import java.io.*;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -15,6 +14,9 @@ public class Controller {
 	private int basePort = 60000;
 	private ArrayList<Socket> sockets = new ArrayList<Socket>();
 	private ArrayList<ObjectOutputStream> outputStreams = new ArrayList<ObjectOutputStream>();
+	private ArrayList<BufferedReader> inputStreams = new ArrayList<BufferedReader>();
+	private boolean listening = true;
+	private HashSet<Integer> installedMessages = new HashSet<Integer>();
 
 	public Controller(int nodes){
 
@@ -29,13 +31,44 @@ public class Controller {
 			try {
 				Socket item = new Socket("localhost", basePort + i);
 				sockets.add(item);
+				item.setSoTimeout(1);
 				outputStreams.add(new ObjectOutputStream(item.getOutputStream()));
+				inputStreams.add(new BufferedReader(new InputStreamReader(item.getInputStream())));
+
 			} catch (IOException e) {
 				System.err.println("Could Not Listen on Port: " + (basePort + i));
 				System.exit(-1);
 			}
 
 		}
+
+		Thread t1 = new Thread(new Runnable() {
+			@Override
+			public void run() {
+				String aux = null;
+				while(listening) {
+					for(int i = 1; i < nrNodes + 1; i++) {
+						try {
+							aux = inputStreams.get(i).readLine();
+							handleInstalled(i);
+						} catch (IOException e) {
+							System.err.println("Connection Failed");
+							System.exit(-1);
+						}
+					}
+				}  
+				//close all sockets
+				for(int i = 1; i < nrNodes + 1; i++) {
+					try {
+						inputStreams.get(i).close();
+					} catch (IOException e) {
+						System.err.println("Could Not Close Socket: " + (basePort + i));
+						System.exit(-1);
+					}
+				}
+			}
+		});  
+		t1.start();
 
 	}
 
@@ -132,6 +165,13 @@ public class Controller {
 				System.err.println("Connection Failed");
 				System.exit(-1);
 			}
+		}
+	}
+
+	public void handleInstalled(int node) {
+		installedMessages.add(node);
+		if(installedMessages.size() == nrNodes) {
+			System.exit(1);
 		}
 	}
 }

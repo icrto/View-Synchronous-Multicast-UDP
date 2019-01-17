@@ -1,7 +1,8 @@
 #!/bin/bash
+VARIABLE="STABLE"
 NR_NODES=7
 NR_MAX_NON_STABLE_MSGS=10
-NR_MAX_STABLE_MSGS=200
+NR_MAX_STABLE_MSGS=2
 NR_MEASUREMENTS=2
 IP="239.0.0.4"
 PORT=6789
@@ -28,7 +29,7 @@ do
     PIDS=()
     for (( i = 1; i < $NR_NODES + 1; i++ ))
     do
-      java -jar node.jar $NR_NODES $i $IP $PORT $DROP_RATE $AVG_DELAY $STD_DELAY $FILEPATH $k $NR_MAX_NON_STABLE_MSGS &
+      java -jar node.jar $NR_NODES $i $IP $PORT $DROP_RATE $AVG_DELAY $STD_DELAY $FILEPATH $k $NR_MAX_NON_STABLE_MSGS $VARIABLE &
       PIDS+=($!)
     done
     echo ${PIDS[@]}
