@@ -11,6 +11,7 @@ AVG_DELAY=0
 STD_DELAY=0
 DIRECTORY="results"
 FILEPATH="results/stable/$(date +%Y%m%d_%H%M%S)"
+#FILEPATH="results/stable/teste"
 if [ ! -d "$DIRECTORY" ]; then
   mkdir results
 fi

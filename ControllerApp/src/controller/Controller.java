@@ -1,6 +1,7 @@
 package controller;
 import java.io.*;
 import java.net.Socket;
+import java.net.SocketTimeoutException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Scanner;
@@ -50,9 +51,9 @@ public class Controller {
 					for(int i = 1; i < nrNodes + 1; i++) {
 						try {
 							aux = inputStreams.get(i).readLine();
-							handleInstalled(i);
+							if(aux != null) handleInstalled(i);
 						} catch (IOException e) {
-							System.err.println("Connection Failed");
+							System.err.println("Connection Failed Receiving");
 							System.exit(-1);
 						}
 					}
@@ -68,7 +69,7 @@ public class Controller {
 				}
 			}
 		});  
-		t1.start();
+//		t1.start();
 
 	}
 
@@ -166,11 +167,29 @@ public class Controller {
 				System.exit(-1);
 			}
 		}
+
+		String aux = null;
+		while(listening) {
+			for(int i = 0; i < nrNodes; i++) {
+				try {
+					aux = inputStreams.get(i).readLine();
+					if(aux != null) handleInstalled(i);
+				} catch(SocketTimeoutException e) { 
+					continue;
+				} catch (IOException e) {
+					System.err.println("Connection Failed Receiving " + i);
+					System.exit(-1);
+				}
+			}
+		}  
 	}
 
 	public void handleInstalled(int node) {
+		
+		System.out.println("Received " + node);
 		installedMessages.add(node);
-		if(installedMessages.size() == nrNodes) {
+		if(installedMessages.size() == nrNodes - 1) {
+			System.out.println("All installed");
 			System.exit(1);
 		}
 	}
