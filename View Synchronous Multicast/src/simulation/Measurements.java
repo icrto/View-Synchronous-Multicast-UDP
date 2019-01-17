@@ -13,8 +13,6 @@ public class Measurements {
 	private long init;
 	private long finish;
 	private int var;
-	private int nonvar1;
-	private int nonvar2;
 	
 	public Measurements(String filePath, int nodeID, int nrNodes, int nrStableMsgs, int nrNonStableMsgs, String variable) throws IOException{
 
@@ -49,6 +47,7 @@ public class Measurements {
 		}
 		String aux;
 		String []contents = null;
+		@SuppressWarnings("resource")
 		Scanner scan = new Scanner(file);
 
 		//go to last line, get its first number (indicating nrNonStableMsgs -> script loop iteration count)

@@ -60,7 +60,6 @@ public class VSM extends Thread {
 	private View mostRecentNotInstalledView = null;
 	private boolean flushSent = false; // TODO: change to false when installed all new views
 
-	private long unstableMsgsSentTime = 0;
 	private String filePath;
 	private int nrStableMsgs;
 	private int nrNonStableMsgs;
@@ -130,7 +129,7 @@ public class VSM extends Thread {
 		}
 
 		try {
-			measure = new Measurements(filePath, this.nodeId, this.nrNodes, this.nrStableMsgs, this.nrNonStableMsgs, variable);
+			measure = new Measurements(this.filePath, this.nodeId, this.nrNodes, this.nrStableMsgs, this.nrNonStableMsgs, variable);
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();

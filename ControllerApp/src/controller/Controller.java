@@ -43,34 +43,6 @@ public class Controller {
 
 		}
 
-		Thread t1 = new Thread(new Runnable() {
-			@Override
-			public void run() {
-				String aux = null;
-				while(listening) {
-					for(int i = 1; i < nrNodes + 1; i++) {
-						try {
-							aux = inputStreams.get(i).readLine();
-							if(aux != null) handleInstalled(i);
-						} catch (IOException e) {
-							System.err.println("Connection Failed Receiving");
-							System.exit(-1);
-						}
-					}
-				}  
-				//close all sockets
-				for(int i = 1; i < nrNodes + 1; i++) {
-					try {
-						inputStreams.get(i).close();
-					} catch (IOException e) {
-						System.err.println("Could Not Close Socket: " + (basePort + i));
-						System.exit(-1);
-					}
-				}
-			}
-		});  
-//		t1.start();
-
 	}
 
 	public View getCurrentView() {

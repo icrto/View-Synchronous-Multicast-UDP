@@ -69,7 +69,6 @@ public class VSM extends Thread {
 	private boolean unstableMsgsSent = false; // TODO: change to false when installed all new views
 
 	private long flushSentTime = 0;
-	private boolean flushSent = false;
 
 	private long unstableMsgsSentTime = 0;	
 	private String filePath;
@@ -100,11 +99,6 @@ public class VSM extends Thread {
 
 		System.out.println("N" + nodeId + " " + currentView.toString());
 
-//		//Testes para verificar condições iniciais 
-//		futureViewMessagesAcks.add(new MessageAcks(new PayloadMessage(2, 1, 5, "Mensagem 1")));
-//		futureViewMessagesAcks.add(new MessageAcks(new PayloadMessage(2, 1, 6, "Mensagem 2")));
-//		futureViewMessagesAcks.add(new MessageAcks(new PayloadMessage(3, 1, 7, "Mensagem 3 da Vista 3")));
-//		System.out.println("Num elementos em fut: " + futureViewMessagesAcks.size());
 	}
 
 	//constructor for measure mode
@@ -150,7 +144,7 @@ public class VSM extends Thread {
 		}
 
 		try {
-			measure = new Measurements(filePath, this.nodeId, this.nrNodes, this.nrStableMsgs, this.nrNonStableMsgs, variable);
+			measure = new Measurements(this.filePath, this.nodeId, this.nrNodes, this.nrStableMsgs, this.nrNonStableMsgs, variable);
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -213,7 +207,6 @@ public class VSM extends Thread {
 
 	private void changeViewProcess() {
 
-		Message msg = null;
 		mostRecentNotInstalledView = getLastElement(viewQueue); // TODO: don't do this every time
 
 		// Discover if got excluded
@@ -231,7 +224,7 @@ public class VSM extends Thread {
 		intersectionNodeIds.retainAll(mostRecentNotInstalledView.getNodes());
 		intersectionView.setNodes(intersectionNodeIds);
 
-		if(DEBUG_PRINT > 0) {
+		if(DEBUG_PRINT  == 3) {
 			System.out.println("Undelivered size: " + undeliveredMessagesAcks.size());
 			System.out.println("Delivered size: " + deliveredMessagesAcks.size());
 			System.out.println("Stable size: " + stableMessages.size());
