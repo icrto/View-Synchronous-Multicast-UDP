@@ -68,8 +68,7 @@ public class Group {
 			System.err.println("Output Stream Creation Failed");
 			System.exit(-1);
 		}
-		output.println("Olá");
-		System.out.println("avisou controller");
+		output.println("Installed");
 	}
 
 

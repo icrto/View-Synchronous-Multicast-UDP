@@ -32,7 +32,7 @@ public class VSM extends Thread {
 	//1 -> only installed view and exclusion
 	//2 -> only installed view, exclusion and flushes
 	//3 -> all prints
-	private static final int DEBUG_PRINT = 0;
+	private static final int DEBUG_PRINT = 1;
 
 	private final Lock lock = new ReentrantLock();
 	private final Condition notEmpty = lock.newCondition();

@@ -23,7 +23,7 @@ import vsmMessage.*;
 
 public class VSM extends Thread {
 
-	private static final boolean DEBUG_PRINT = false;
+	private static final boolean DEBUG_PRINT = true;
 
 	private final Lock lock = new ReentrantLock();
 	private final Condition notEmpty = lock.newCondition();
@@ -606,6 +606,7 @@ public class VSM extends Thread {
 
 		if(DEBUG_PRINT) System.out.println("DEBUG: Installed view: " + currentView);
 		if(measure != null) measure.setFinish(System.nanoTime());
+		group.installedView();
 	}
 	private void excludeNode() {
 

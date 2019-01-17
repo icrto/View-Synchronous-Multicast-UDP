@@ -3,6 +3,7 @@ package node;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
+import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 
@@ -14,11 +15,11 @@ public class Group {
 	private ServerSocket welcomeSocket = null;
 	private Socket connectionSocket;
 	private ObjectInputStream input = null;
-	private DataOutputStream output = null;
-	private VSM vsm; // TODO: check if it's possible to remove this
+	private PrintWriter output = null;
+
 	public Group(VSM vsm, int ID) {
 		this.nodeID = ID;
-		this.vsm = vsm;
+		//this.vsm = vsm;
 
 		Thread t1 = new Thread(new Runnable() {
 			@Override
@@ -32,9 +33,9 @@ public class Group {
 						while(true) {
 							try {
 								View newView = (View)input.readObject();
-								System.out.println("RECEIVED: " + newView.toString());
+								System.out.println("N" + nodeID + " RECEIVED: " + newView.toString());
 								vsm.addViewToQueue(newView);
-								
+
 							} catch (IOException e) {
 								System.err.println("Connection Failed");
 								System.exit(-1);
@@ -48,7 +49,7 @@ public class Group {
 						System.exit(-1);
 					}
 				} catch (IOException e3) {
-					//System.err.println("Could Not Listen on Port: " + (basePort + nodeID));
+					System.err.println("Could Not Listen on Port: " + (basePort + nodeID));
 					System.exit(-1);
 				}	    
 			}
@@ -60,21 +61,14 @@ public class Group {
 	/**
 	 * Method to inform Controller that a node has to leave the view 
 	 */
-	public void suspect(Integer node) {
+	public void installedView() {
 		try {
-			output = new DataOutputStream(connectionSocket.getOutputStream());
+			output = new PrintWriter(connectionSocket.getOutputStream(), true);
 		} catch (IOException e) {
 			System.err.println("Output Stream Creation Failed");
 			System.exit(-1);
 		}
-		try {
-			output.writeInt(node);
-			output.flush();
-		} catch (IOException e) {
-			System.err.println("Couldn't write to Output Stream");
-			System.exit(-1);
-		}
-		
+		output.println("Installed");
 	}
 
 
